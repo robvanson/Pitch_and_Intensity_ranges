@@ -39,7 +39,7 @@ endform
 if macintosh and praatVersion >= 6117
 	beginPause: "Warning"
 		comment: "The script can crash unexpectedly on Mac OSX with Praat 6.1.17 and up."
-		comment: "Restart after processing each recording."
+		comment: "To prevent this, audio files will be used in their entirety."
 	clicked = endPause: "Continue", 0
 endif
 
@@ -540,35 +540,36 @@ procedure read_and_select_audio .type .message1$ .message2$
 	selectObject: .source
 	.fullName$ = selected$()
 	.duration = Get total duration
-	if startsWith(.fullName$, "Sound") 
-		View & Edit
-	else
-		View
-	endif
-	editor: .source
-	endeditor
-	beginPause: .message2$
-		comment: (uiMessage$ [uiLanguage$, "SelectSound1"])
-		comment: (uiMessage$ [uiLanguage$, "SelectSound2"])
-		comment: (uiMessage$ [uiLanguage$, "SelectSound3"])
-	.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
-	if .clicked = 1
-		selectObject: .source
-		Remove
-		pauseScript: (uiMessage$ [uiLanguage$, "Stopped"])
-		goto RETURN
-	endif
-	
 	.tmp = -1
-	editor: .source
-		.start = Get start of selection
-		.end = Get end of selection
-		if .start >= .end
-			Select: 0, .duration
+	if not (macintosh and praatVersion >= 6117)
+		if startsWith(.fullName$, "Sound") 
+			View & Edit
+		else
+			View
 		endif
-		.tmp = Extract selected sound (time from 0)
-	endeditor
-
+		editor: .source
+		endeditor
+		beginPause: .message2$
+			comment: (uiMessage$ [uiLanguage$, "SelectSound1"])
+			comment: (uiMessage$ [uiLanguage$, "SelectSound2"])
+			comment: (uiMessage$ [uiLanguage$, "SelectSound3"])
+		.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
+		if .clicked = 1
+			selectObject: .source
+			Remove
+			pauseScript: (uiMessage$ [uiLanguage$, "Stopped"])
+			goto RETURN
+		endif
+		
+		editor: .source
+			.start = Get start of selection
+			.end = Get end of selection
+			if .start >= .end
+				Select: 0, .duration
+			endif
+			.tmp = Extract selected sound (time from 0)
+		endeditor
+	endif
 	if .tmp <= 0
 		selectObject: .source
 		.duration = Get total duration
