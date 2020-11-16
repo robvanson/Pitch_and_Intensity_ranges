@@ -37,7 +37,10 @@ endform
 
 # Alert for crashed on Mac praat 6.1.17 and up
 if macintosh and praatVersion >= 6117
-	pauseScript: "The script can crash unexpectedly on Mac OSX with Praat 6.1.17 and up"
+	beginPause: "Warning"
+		comment: "The script can crash unexpectedly on Mac OSX with Praat 6.1.17 and up."
+		comment: "Restart after processing each recording."
+	clicked = endPause: "Continue", 0
 endif
 
 # shorten variables
