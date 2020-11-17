@@ -36,10 +36,10 @@ form Measuring Pitch and Dynamic range
 endform
 
 # Alert for crashed on Mac praat 6.1.17 and up
-if macintosh and praatVersion >= 6117
+if macintosh and praatVersion >= 6117 and praatVersion <= 6131
 	beginPause: "Warning"
-		comment: "The script can crash unexpectedly on Mac OSX with Praat 6.1.17 and up."
-		comment: "To prevent this, audio files will be used in their entirety."
+		comment: "The script can crash unexpectedly on Mac OSX with Praat 6.1.17-6.1.31."
+		comment: "Please upgrade to Praat 6.1.32 or higher."
 	clicked = endPause: "Continue", 0
 endif
 
@@ -541,7 +541,7 @@ procedure read_and_select_audio .type .message1$ .message2$
 	.fullName$ = selected$()
 	.duration = Get total duration
 	.tmp = -1
-	if not (macintosh and praatVersion >= 6117)
+	if not (macintosh and praatVersion >= 6117 and praatVersion <= 6131)
 		if startsWith(.fullName$, "Sound") 
 			View & Edit
 		else
