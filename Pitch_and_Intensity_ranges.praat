@@ -22,32 +22,51 @@
 # Scroll down for copyright and license information on the included 
 # Syllable Nuclei script by de Jong and Wempe
 #
-form Measuring Pitch and Dynamic range
-   real Silence_threshold_(dB) -25
-   real Minimum_dip_between_peaks_(dB) 2
-   real Minimum_pause_duration_(s) 0.3
+
+# Initialize
+# Set current Locale
+uiLanguage$ = "EN"
+
+# Initialize messages
+call intialize_UI_messages
+
+call retrieve_settings
+
+beginPause: "Measuring Pitch and Dynamic range"
+   real: "Silence threshold (dB)", retrieve_settings.silence_Threshold
+   real: "Minimum dip between peaks (dB)", retrieve_settings.minimum_dip
+   real: "Minimum pause duration (s)", retrieve_settings.minimum_pause
    #sentence directory Audio
-   optionmenu Scale: 1
-		option Hz
-		option Mel
-		option Bark
-		option Semitones
-   boolean Normalize_intensity 1
-endform
+   optionMenu: "Scale", retrieve_settings.scale_default
+		option: "Hz"
+		option: "Mel"
+		option: "Bark"
+		option: "Semitones"
+   boolean: "Normalize intensity", retrieve_settings.normalize_intensity
+.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
+
+if .clicked = 1
+	.continue = 0
+	.message$ = uiMessage$ [uiLanguage$, "Nothing to do"]
+	exitScript: .message$
+endif
+
+# Store settings
+@write_settings: silence_threshold, minimum_dip_between_peaks, minimum_pause_duration, normalize_intensity, scale$
 
 # Alert for crashed on Mac praat 6.1.17 and up
 if macintosh and praatVersion >= 6117 and praatVersion <= 6131
 	beginPause: "Warning"
 		comment: "The script can crash unexpectedly on Mac OSX with Praat 6.1.17-6.1.31."
 		comment: "Please upgrade to Praat 6.1.32 or higher."
-	clicked = endPause: "Continue", 0
+	clicked = endPause: (uiMessage$ [uiLanguage$, "Continue"]), 0
 endif
 
 # shorten variables
-silencedb = 'silence_threshold'
-mindip = 'minimum_dip_between_peaks'
+silencedb = silence_threshold
+mindip = minimum_dip_between_peaks
 showtext = 1
-minpause = 'minimum_pause_duration'
+minpause = minimum_pause_duration
 
 # Global values
 pitchFloor = 75
@@ -67,13 +86,6 @@ elsif scale$ = "Bark"
 elsif scale$ = "Semitones"
 	precission = 1
 endif
-
-# Initialize
-# Set current Locale
-uiLanguage$ = "EN"
-
-# Initialize messages
-call intialize_UI_messages
 
 enteredTitle$ = uiMessage$ [uiLanguage$, "untitled"]
 
@@ -1261,3 +1273,86 @@ procedure syllable_nuclei .soundid
    .asd = .speakingtot/.voicedcount
 endproc
 
+
+# 
+#######################################################################
+# 
+# Retrieve last saved settings
+# 
+#######################################################################
+#
+procedure retrieve_settings
+	.defaultLanguage = 1
+	.preferencesLanguageFile$ = preferencesDirectory$+"/Pitch_and_Intensity.prefs"
+	.preferencesLang$ = ""
+	.silence_Threshold = -25
+	.minimum_dip = 2
+	.minimum_pause = 0.3
+	.normalize_intensity = 1
+	.scale_default = 4
+
+	if fileReadable(.preferencesLanguageFile$)
+		.preferences$ = readFile$(.preferencesLanguageFile$)
+		if index(.preferences$, "Language=") > 0
+			.preferencesLang$ = extractWord$(.preferences$, "Language=")
+		else
+			.preferencesLang$ = ""
+		endif
+		
+		# Silence_threshold
+		if index(.preferences$, "Silence threshold=") > 0
+			.silence_Threshold = extractNumber(.preferences$, "Silence threshold=")
+		else
+			.silence_Threshold = -25
+		endif
+		
+		# Minimum_dip
+		if index(.preferences$, "Minimum dip=") > 0
+			.minimum_dip = extractNumber(.preferences$, "Minimum dip=")
+		else
+			.minimum_dip = 2
+		endif
+		
+		# Minimum_pause
+		if index(.preferences$, "Minimum pause=") > 0
+			.minimum_pause = extractNumber(.preferences$, "Minimum pause=")
+		else
+			.minimum_pause = 0.3
+		endif
+		
+		# Normalize_intensity
+		if index(.preferences$, "Normalize intensity=") > 0
+			.normalize_intensity = extractNumber(.preferences$, "Normalize intensity=")
+		else
+			.normalize_intensity = 1
+		endif
+		
+		# Always assume that the preferences file could be corrupted
+		if index(.preferences$, "Scale=") > 0
+			.tmp$ = extractWord$(.preferences$, "Scale=")
+			if index(.tmp$, "Hz")
+				.scale_default = 1
+			elsif index(.tmp$, "Mel")
+				.scale_default = 2
+			elsif index(.tmp$, "Bark")
+				.scale_default = 3
+			elsif index(.tmp$, "Semitones")
+				.scale_default = 4
+			endif
+		else
+			.scale_default = 4
+		endif
+
+	endif
+endproc
+
+procedure write_settings .silence_Threshold .minimum_dip .minimum_pause .normalize_intensity .scale$
+	# Store preferences
+	.preferencesLanguageFile$ = preferencesDirectory$+"/Pitch_and_Intensity.prefs"
+	writeFileLine: .preferencesLanguageFile$, "Language=",uiLanguage$
+	appendFileLine: .preferencesLanguageFile$, "Silence threshold=", .silence_Threshold
+	appendFileLine: .preferencesLanguageFile$, "Minimum dip=", .minimum_dip
+	appendFileLine: .preferencesLanguageFile$, "Minimum pause=", .minimum_pause
+	appendFileLine: .preferencesLanguageFile$, "Normalize intensity=", .normalize_intensity
+	appendFileLine: .preferencesLanguageFile$, "Scale=", .scale$
+endproc
