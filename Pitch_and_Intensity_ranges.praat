@@ -354,10 +354,16 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	.slope = calculate_ellipse.slope
 	.r = calculate_ellipse.r
 	.rsqr = .r^2
+
 	.xLow = calculate_ellipse.xLow
 	.xHigh = calculate_ellipse.xHigh
 	.yLow = calculate_ellipse.yLow
 	.yHigh = calculate_ellipse.yHigh
+	
+	.xLow.minor = calculate_ellipse.xLow.minor
+	.xHigh.minor = calculate_ellipse.xHigh.minor
+	.yLow.minor = calculate_ellipse.yLow.minor
+	.yHigh.minor = calculate_ellipse.yHigh.minor
 	
 	# Plot
 	selectObject: .table
@@ -391,6 +397,7 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	Draw ellipse (standard deviation): .scale$, leftAxis, rightAxis, "Intensity", bottomAxis, topAxis, 2, "no"
 	Dotted line
 	Draw line: .xLow, .yLow, .xHigh, .yHigh
+	Draw line: .xLow.minor, .yLow.minor, .xHigh.minor, .yHigh.minor
 	Solid line
 	Black
 	Text special: leftAxis, "Left", bottomAxis+1.6, "Bottom", "Helvetica", 12, "0", uiMessage$ [uiLanguage$, "Duration"]+": "+fixed$(totalDuration, precission)+" s"
@@ -654,21 +661,32 @@ procedure calculate_ellipse .table
 	if .b1 = 0 and .a >= .c
 		.theta = 0
 		.slope = 0
+		.slope.2 = undefined
 	elsif .b1 = 0 and .a < .c
 		.theta = pi /2
 		.slope = undefined
+		.slope.2 = 0
 	else
 		.theta = arctan2(.lambda.1 - .a, .b1)
 		.slope = (.lambda.1 - .a) / .b1
+		.slope.2 = .e2.y / .e2.x
 	endif
 	.degrees = .theta * 180 / pi
 	.xTheta = .lambda.1 - .a
 	.yTheta = .b1
 	
-	.xLow = .meanPitch -  2*sqrt(.lambda.1/(.slope^2 + 1))
+	.theta.minor = .theta + pi / 2
+	.degrees.minor = .degrees + 90
+	
+	.xLow  = .meanPitch - 2*sqrt(.lambda.1/(.slope^2 + 1))
 	.xHigh = .meanPitch + 2*sqrt(.lambda.1/(.slope^2 + 1))
-	.yLow = .meanInt -    2*sqrt(.lambda.1/(1 + 1/(.slope^2)))
-	.yHigh = .meanInt +   2*sqrt(.lambda.1/(1 + 1/(.slope^2)))
+	.yLow  = .meanInt   - 2*sqrt(.lambda.1/(1 + 1/(.slope^2)))
+	.yHigh = .meanInt   + 2*sqrt(.lambda.1/(1 + 1/(.slope^2)))
+
+	.xLow.minor  = .meanPitch - 2*sqrt(.lambda.2)*.e2.x
+	.xHigh.minor = .meanPitch + 2*sqrt(.lambda.2)*.e2.x
+	.yLow.minor  = .meanInt   - 2*sqrt(.lambda.2)*.e2.y
+	.yHigh.minor = .meanInt   + 2*sqrt(.lambda.2)*.e2.y
 
 	selectObject: .realTable, .covariance, .correlation, .pca
 	Remove
