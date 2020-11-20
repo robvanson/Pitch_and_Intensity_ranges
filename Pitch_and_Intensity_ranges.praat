@@ -25,12 +25,19 @@
 
 # Initialize
 # Set current Locale
+.defaultLanguage = 1
 uiLanguage$ = "EN"
 
 # Initialize messages
 call intialize_UI_messages
 
 call retrieve_settings
+.defaultLanguage = retrieve_settings.defaultLanguage
+uiLanguage$ = retrieve_settings.preferencesLang$
+.languageInput$ = uiMessage$ [uiLanguage$, "Interface Language"]
+.languageInputVar$ = replace_regex$(.languageInput$, "^([A-Z])", "\l\1", 0)
+.languageInputVar$ = replace_regex$(.languageInputVar$, "\s*\(.*$", "", 0)
+.languageInputVar$ = replace_regex$(.languageInputVar$, "(\s|[.?!()/\\\\])", "_", 0)
 
 beginPause: "Measuring Pitch and Dynamic range"
    real: "Silence threshold (dB)", retrieve_settings.silence_Threshold
@@ -43,12 +50,53 @@ beginPause: "Measuring Pitch and Dynamic range"
 		option: "Bark"
 		option: "Semitones"
    boolean: "Normalize intensity", retrieve_settings.normalize_intensity
+   optionMenu: .languageInput$, .defaultLanguage
+		option: "English"
+		option: "Nederlands"
+		option: "Deutsch"
+		option: "Français"
+		option: "汉语"
+		option: "Español"
+		option: "Português"
+		option: "Italiano"
+	#   option: "MyLanguage"   
 .clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
 
 if .clicked = 1
 	.continue = 0
 	.message$ = uiMessage$ [uiLanguage$, "Nothing to do"]
 	exitScript: .message$
+endif
+
+uiLanguage$ = "EN"
+.defaultLanguage = 1
+.display_language$ = '.languageInputVar$'$
+if .display_language$ = "Nederlands"
+	uiLanguage$ = "NL"
+	.defaultLanguage = 2
+elsif .display_language$ = "Deutsch"
+	uiLanguage$ = "DE"
+	.defaultLanguage = 3
+elsif .display_language$ = "Français"
+	uiLanguage$ = "FR"
+	.defaultLanguage = 4
+elsif .display_language$ = "汉语"
+	uiLanguage$ = "ZH"
+	.defaultLanguage = 5
+elsif .display_language$ = "Español"
+	uiLanguage$ = "ES"
+	.defaultLanguage = 6
+elsif .display_language$ = "Português"
+	uiLanguage$ = "PT"
+	.defaultLanguage = 7
+elsif .display_language$ = "Italiano"
+	uiLanguage$ = "IT"
+	.defaultLanguage = 8
+#
+# Add a new language
+# elsif .display_language$ = "MyLanguage"
+#	uiLanguage$ = "MyCode"
+#	.defaultLanguage = 9
 endif
 
 # Store settings
@@ -127,10 +175,9 @@ else
 	right = 0
 	bottom = 0
 	top = 0
-	writeInfoLine: "Mean Int;SD Int;Mean 'scale$';SD 'scale$';Slope;Rsqr;Area;N;Outliers;Duration;Title"
+	writeInfoLine: "Mean Int;SD Int;Mean 'scale$';SD 'scale$';Slope;R;Area;N;Outliers;Duration;Title"
 	while .continue
 		first = 1
-		
 		
 		# Open sound and select
 		.open1$ = uiMessage$ [uiLanguage$, "Open1"]
@@ -161,17 +208,16 @@ else
 		beginPause: "Select a title"
 			sentence: uiMessage$ [uiLanguage$, "Title"], titleText$
 			comment: "Axes"
-			real: "Left", left
-			real: "Right", right
-			real: "Bottom", bottom
-			real: "Top", top
+			real: uiMessage$ [uiLanguage$, "Left"], left
+			real: uiMessage$ [uiLanguage$, "Right"], right
+			real: uiMessage$ [uiLanguage$, "Bottom"], bottom
+			real: uiMessage$ [uiLanguage$, "Top"], top
 		.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1	
 		if .clicked = 1
 			.continue = 0
 			.message$ = uiMessage$ [uiLanguage$, "Nothing to do"]
 			exitScript: .message$
 		endif
-
 		if '.titleVar$'$ = ""
 			enteredTitle$ = uiMessage$ [uiLanguage$, "untitled"]
 		elsif '.titleVar$'$ != uiMessage$ [uiLanguage$, "untitled"] and index_regex('.titleVar$'$, "[^\s]")
@@ -205,14 +251,14 @@ else
 		
 		# Print info
 		# "Mean Int;SD Int;Mean 'scale$';SD 'scale$';Slope;Rsqr;N;Outliers;Area;Duration;Title"
-		appendInfoLine: fixed$(plot_Pitch_Int_table.meanInt, precission+1), ";", fixed$(plot_Pitch_Int_table.sdInt, precission+1), ";", fixed$(plot_Pitch_Int_table.meanF0, precission+1), ";", fixed$(plot_Pitch_Int_table.sdF0, precission+1), ";", fixed$(plot_Pitch_Int_table.slope, precission+3), ";", fixed$(plot_Pitch_Int_table.rsqr, precission+2), ";", fixed$(plot_Pitch_Int_table.area, precission), ";", plot_Pitch_Int_table.nrows, ";", plot_Pitch_Int_table.removed, ";", fixed$(totalDuration, precission), ";", titleText$
+		appendInfoLine: fixed$(plot_Pitch_Int_table.meanInt, precission+1), ";", fixed$(plot_Pitch_Int_table.sdInt, precission+1), ";", fixed$(plot_Pitch_Int_table.meanF0, precission+1), ";", fixed$(plot_Pitch_Int_table.sdF0, precission+1), ";", fixed$(plot_Pitch_Int_table.slope, precission+3), ";", fixed$(plot_Pitch_Int_table.r, precission+2), ";", fixed$(plot_Pitch_Int_table.area, precission), ";", plot_Pitch_Int_table.nrows, ";", plot_Pitch_Int_table.removed, ";", fixed$(totalDuration, precission), ";", titleText$
 	
 		# Write title
 		Helvetica
 		Text special: (leftAxis+rightAxis)/2, "Centre", topAxis+0.5, "Bottom", "Helvetica", 24, "0", titleText$	
 	
 		# Save graphics
-		.file$ = chooseWriteFile$: uiMessage$ [uiLanguage$, "SavePicture"], title$+"_PitchDynamic.png"
+		.file$ = chooseWriteFile$: uiMessage$ [uiLanguage$, "SavePicture"], titleText$+"_PitchDynamic.png"
 		if .file$ <> ""
 			Select outer viewport: 0, 9, 0, 9
 			Save as 300-dpi PNG file: .file$
@@ -679,10 +725,10 @@ procedure calculate_ellipse .table
 	.theta.minor = .theta + pi / 2
 	.degrees.minor = .degrees + 90
 	
-	.xLow  = .meanPitch - 2*sqrt(.lambda.1/(.slope^2 + 1))
-	.xHigh = .meanPitch + 2*sqrt(.lambda.1/(.slope^2 + 1))
-	.yLow  = .meanInt   - 2*sqrt(.lambda.1/(1 + 1/(.slope^2)))
-	.yHigh = .meanInt   + 2*sqrt(.lambda.1/(1 + 1/(.slope^2)))
+	.xLow  = .meanPitch - 2*sqrt(.lambda.1)*.e1.x
+	.xHigh = .meanPitch + 2*sqrt(.lambda.1)*.e1.x
+	.yLow  = .meanInt   - 2*sqrt(.lambda.1)*.e1.y
+	.yHigh = .meanInt   + 2*sqrt(.lambda.1)*.e1.y
 
 	.xLow.minor  = .meanPitch - 2*sqrt(.lambda.2)*.e2.x
 	.xHigh.minor = .meanPitch + 2*sqrt(.lambda.2)*.e2.x
@@ -744,6 +790,12 @@ uiMessage$ ["EN", "Record"] = "Record"
 uiMessage$ ["EN", "untitled"] = "untitled"
 uiMessage$ ["EN", "Title"] 			= "Title"
 
+uiMessage$ ["EN", "Left"] 			= "Left"
+uiMessage$ ["EN", "Right"] 			= "Right"
+uiMessage$ ["EN", "Top"] 			= "Top"
+uiMessage$ ["EN", "Bottom"] 		= "Bottom"
+uiMessage$ ["EN", "Axes"] 			= "Axes"
+
 # Dutch
 uiMessage$ ["NL", "PauseRecord"] 	= "Neem lopende spraak op"
 uiMessage$ ["NL", "Record1"] 		= "Neem de ##lopende spraak# op"
@@ -790,6 +842,12 @@ uiMessage$ ["NL", "Open"] 			= "Open"
 uiMessage$ ["NL", "Record"] 		= "Opnemen"
 uiMessage$ ["NL", "untitled"] 		= "zonder titel"
 uiMessage$ ["NL", "Title"] 			= "Titel"
+
+uiMessage$ ["NL", "Left"] 			= "Links"
+uiMessage$ ["NL", "Right"] 			= "Rechts"
+uiMessage$ ["NL", "Top"] 			= "Boven"
+uiMessage$ ["NL", "Bottom"] 		= "Onder"
+uiMessage$ ["NL", "Axes"] 			= "Assen"
 
 # German
 uiMessage$ ["DE", "PauseRecord"] 	= "Zeichne laufende Sprache auf"
@@ -838,6 +896,12 @@ uiMessage$ ["DE", "Record"] 		= "Aufzeichnen"
 uiMessage$ ["DE", "untitled"] 		= "ohne Titel"
 uiMessage$ ["DE", "Title"] 			= "Titel"
 
+uiMessage$ ["DE", "Left"] 			= "Links"
+uiMessage$ ["DE", "Right"] 			= "Rechts"
+uiMessage$ ["DE", "Top"] 			= "Oben"
+uiMessage$ ["DE", "Bottom"] 		= "Unten"
+uiMessage$ ["DE", "Axes"] 			= "Axes"
+
 # French
 uiMessage$ ["FR", "PauseRecord"]	= "Enregistrer un discours continu"
 uiMessage$ ["FR", "Record1"]		= "Enregistrer le ##discours continu#"
@@ -884,6 +948,12 @@ uiMessage$ ["FR", "Open"]			= "Ouvert"
 uiMessage$ ["FR", "Record"]			= "Enregistrer"
 uiMessage$ ["FR", "untitled"] 		= "sans titre"
 uiMessage$ ["FR", "Title"] 			= "Titre"
+
+uiMessage$ ["FR", "Left"] 			= "Gauche"
+uiMessage$ ["FR", "Right"] 			= "Droite"
+uiMessage$ ["FR", "Top"] 			= "Supérieur"
+uiMessage$ ["FR", "Bottom"] 		= "Inférieur"
+uiMessage$ ["FR", "Axes"] 			= "Axes"
 
 # Chinese
 uiMessage$ ["ZH", "PauseRecord"] 	= "录制连续语音"
@@ -933,6 +1003,12 @@ uiMessage$ ["ZH", "Record"] 		= "录音"
 uiMessage$ ["ZH", "untitled"] 		= "无标题"
 uiMessage$ ["ZH", "Title"] 			= "标题"
 
+uiMessage$ ["ZH", "Left"] 			= "左图轴"
+uiMessage$ ["ZH", "Right"] 			= "右图轴"
+uiMessage$ ["ZH", "Top"] 			= "上图轴"
+uiMessage$ ["ZH", "Bottom"] 		= "下图轴"
+uiMessage$ ["ZH", "Axes"] 			= "绘图轴"
+
 # Spanish
 uiMessage$ ["ES", "PauseRecord"]	= "Grabar un discurso continuo"
 uiMessage$ ["ES", "Record1"]		= "Guardar ##discurso continuo#"
@@ -979,6 +1055,12 @@ uiMessage$ ["ES", "Open"]			= "Abrir"
 uiMessage$ ["ES", "Record"]			= "Grabar"
 uiMessage$ ["ES", "untitled"] 		= "no tiene título"
 uiMessage$ ["ES", "Title"] 			= "Título"
+
+uiMessage$ ["ES", "Left"] 			= "Izquierdo"
+uiMessage$ ["ES", "Right"] 			= "Derecho"
+uiMessage$ ["ES", "Top"] 			= "Superior"
+uiMessage$ ["ES", "Bottom"] 		= "Inferior"
+uiMessage$ ["ES", "Axes"] 			= "Ajes"
 
 # Portugese
 uiMessage$ ["PT", "PauseRecord"]	= "Gravar um discurso contínuo"
@@ -1027,6 +1109,12 @@ uiMessage$ ["PT", "Record"]			= "Gravar"
 uiMessage$ ["PT", "untitled"] 		= "sem título"
 uiMessage$ ["PT", "Title"] 			= "Título"
 
+uiMessage$ ["PT", "Left"] 			= "Esquerdo"
+uiMessage$ ["PT", "Right"] 			= "Direito"
+uiMessage$ ["PT", "Top"] 			= "Superior"
+uiMessage$ ["PT", "Bottom"] 		= "Inferior"
+uiMessage$ ["PT", "Axes"] 			= "Eixos"
+
 # Italian
 uiMessage$ ["IT", "PauseRecord"]	= "Registra un discorso continuo"
 uiMessage$ ["IT", "Record1"]		= "Salva ##discorso continuo#"
@@ -1073,6 +1161,12 @@ uiMessage$ ["IT", "Open"]			= "Apri"
 uiMessage$ ["IT", "Record"]			= "Registra"
 uiMessage$ ["IT", "untitled"] 		= "senza titolo"
 uiMessage$ ["IT", "Title"] 			= "Titolo"
+
+uiMessage$ ["IT", "Left"] 			= "Sinistro"
+uiMessage$ ["IT", "Right"] 			= "Destro"
+uiMessage$ ["IT", "Top"] 			= "Superiore"
+uiMessage$ ["IT", "Bottom"] 		= "Inferiore"
+uiMessage$ ["IT", "Axes"] 			= "Assi"
 
 endproc
 
@@ -1314,8 +1408,28 @@ procedure retrieve_settings
 		.preferences$ = readFile$(.preferencesLanguageFile$)
 		if index(.preferences$, "Language=") > 0
 			.preferencesLang$ = extractWord$(.preferences$, "Language=")
+			if .preferencesLang$ = "EN"
+				.defaultLanguage = 1
+			elsif .preferencesLang$ = "NL"
+				.defaultLanguage = 2
+			elsif .preferencesLang$ = "DE"
+				.defaultLanguage = 3
+			elsif .preferencesLang$ = "FR"
+				.defaultLanguage = 4
+			elsif .preferencesLang$ = "ZH"
+				.defaultLanguage = 5
+			elsif .preferencesLang$ = "ES"
+				.defaultLanguage = 6
+			elsif .preferencesLang$ = "PT"
+				.defaultLanguage = 7
+			elsif .preferencesLang$ = "IT"
+				.defaultLanguage = 8
+			# elsif .preferencesLang$ = "MY LANG"
+			#	.defaultLanguage = 9
+			endif
 		else
 			.preferencesLang$ = ""
+			.defaultLanguage = 1
 		endif
 		
 		# Silence_threshold
@@ -1368,7 +1482,7 @@ endproc
 procedure write_settings .silence_Threshold .minimum_dip .minimum_pause .normalize_intensity .scale$
 	# Store preferences
 	.preferencesLanguageFile$ = preferencesDirectory$+"/Pitch_and_Intensity.prefs"
-	writeFileLine: .preferencesLanguageFile$, "Language=",uiLanguage$
+	writeFileLine: .preferencesLanguageFile$, "Language=", uiLanguage$
 	appendFileLine: .preferencesLanguageFile$, "Silence threshold=", .silence_Threshold
 	appendFileLine: .preferencesLanguageFile$, "Minimum dip=", .minimum_dip
 	appendFileLine: .preferencesLanguageFile$, "Minimum pause=", .minimum_pause
