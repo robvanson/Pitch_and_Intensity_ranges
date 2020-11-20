@@ -106,8 +106,8 @@ if non_interactive
 			@pitch_dynamic_range: syllable_nuclei.soundid, syllable_nuclei.textgridid, scale$
 			
 			# Plot
-			.horizontal$ = """"+scale$+""", 'leftAxis', 'rightAxis"
-			.vertical$ = """Intensity"", 'bottomAxis', 'topAxis"
+			.horizontal$ = """"+scale$+""", 'leftAxis', 'rightAxis'"
+			.vertical$ = """Intensity"", 'bottomAxis', 'topAxis'"
 			@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "'ifile'", 2, first, 1
 			first = 0
 			
@@ -200,7 +200,7 @@ else
 		
 		# Plot
 		.horizontal$ = """"+scale$+""", 'leftAxis', 'rightAxis'"
-		.vertical$ = """Intensity"", 'bottomAxis', 'topAxis'"
+		.vertical$ = """Intensity (dB)"", 'bottomAxis', 'topAxis'"
 		@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "\bu", 2, first, .resetAxis
 		
 		# Print info
@@ -367,7 +367,9 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	
 	# Plot
 	selectObject: .table
-	Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
+	# Change column name to get correct axis label
+	Set column label (label): "Intensity", "Intensity (dB)"
+	Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
 	Marks left every: 1, 10, "no", "yes", "no"
 	.every = 20
 	if rightAxis - leftAxis < 1.5
@@ -411,15 +413,14 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	Text special: .meanF0, "Centre", .meanInt-0.5, "top", "Helvetica", 9, "0", "("+fixed$(.meanF0, precission)+", "+fixed$(.meanInt, precission)+")"
 	Black
 	
-	Text special: rightAxis, "Right", bottomAxis+1.6, "Bottom", "Helvetica", 10, "0", "R^2: "+fixed$(.rsqr, 3)+" "
+	Text special: rightAxis, "Right", bottomAxis+1.6, "Bottom", "Helvetica", 10, "0", "R: "+fixed$(.r, 3)+" "
 	Text special: rightAxis, "Right", bottomAxis+0.8, "Bottom", "Helvetica", 10, "0", uiMessage$ [uiLanguage$, "SlopeTitle"]+": "+fixed$(.slope, precission+1)+" dB/"+.scale$+" "
-	Text special: rightAxis, "Right", bottomAxis, "Bottom", "Helvetica", 10, "0", uiMessage$ [uiLanguage$, "AreaTitle"]+": "+fixed$(.area, precission)+" "+.scale$+"\.cdB"+" "
+	Text special: rightAxis, "Right", bottomAxis, "Bottom", "Helvetica", 10, "0", uiMessage$ [uiLanguage$, "AreaTitle"]+" (2 SD): "+fixed$(.area, precission)+" "+.scale$+"\.cdB"+" "
 	
 	selectObject: .cleanTable
 	Remove
 	
 	# Axes 
-	Text special: leftAxis - 0.03*(rightAxis-leftAxis), "Left", (bottomAxis+topAxis)/2, "Half", "Helvetica", 16, "90", "(dB)"
 	Text special: (leftAxis + rightAxis)/2, "Centre", bottomAxis, "Top", "Helvetica", 16, "0", "F_0"
 	
 	if .scale$ <> "Hz"
