@@ -577,11 +577,11 @@ procedure read_and_select_audio .type .message1$ .message2$
 			comment: uiMessage$ [uiLanguage$, "CommentList"]
 		.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
 		if .clicked = 1
-			pauseScript: (uiMessage$ [uiLanguage$, "Stopped"])
+			@pauseScriptLanguage: "Stopped", ""
 			goto RETURN
 		endif
 		if numberOfSelected("Sound") <= 0
-			pauseScript: (uiMessage$ [uiLanguage$, "ErrorSound"])
+			@pauseScriptLanguage: "ErrorSound", ""
 			goto RETURN
 		endif
 		.source = selected ("Sound")
@@ -590,7 +590,7 @@ procedure read_and_select_audio .type .message1$ .message2$
 		.filename$ = chooseReadFile$: .message1$
 
 		if .filename$ = "" or not fileReadable(.filename$) or not index_regex(.filename$, "(?i\.(wav|mp3|aif[fc]))")
-			pauseScript: (uiMessage$ [uiLanguage$, "No readable recording selected "])+.filename$
+			@pauseScriptLanguage: "No readable recording selected ", .filename$
 			goto RETURN
 		endif
 		.source = Open long sound file: .filename$
@@ -598,7 +598,7 @@ procedure read_and_select_audio .type .message1$ .message2$
 		.fullName$ = selected$()
 		.fileType$ = extractWord$ (.fullName$, "")
 		if .fileType$ <> "Sound" and .fileType$ <> "LongSound"
-			pauseScript:  (uiMessage$ [uiLanguage$, "ErrorSound"])+.filename$
+			@pauseScriptLanguage:  "ErrorSound", " "+.filename$
 			goto RETURN
 		endif
 	endif
@@ -623,7 +623,7 @@ procedure read_and_select_audio .type .message1$ .message2$
 		if .clicked = 1
 			selectObject: .source
 			Remove
-			pauseScript: (uiMessage$ [uiLanguage$, "Stopped"])
+			@pauseScriptLanguage: "Stopped", ""
 			goto RETURN
 		endif
 		
@@ -877,7 +877,7 @@ uiMessage$ ["DE", "DoContinue"] 	= "Möchten Sie weitergehen?"
 uiMessage$ ["DE", "SelectSound1"] 	= "Wählen Sie den Aufnahmebereich und gehen Sie weiter"
 uiMessage$ ["DE", "SelectSound2"] 	= "Es ist möglich, unerwünschte Geräusche aus der Auswahl zu entfernen"
 uiMessage$ ["DE", "SelectSound3"] 	= "Wählen Sie den unerwünschten Teil und wählen Sie dann ""Cut"" aus dem ""Edit"" Menü"
-uiMessage$ ["DE", "Stopped"] 		= "VowelTriangle ist gestoppt"
+uiMessage$ ["DE", "Stopped"] 		= "Pitch_and_Intensity_ranges ist gestoppt"
 uiMessage$ ["DE", "ErrorSound"] 	= "Fehler: Keine Sprache gefunden"
 uiMessage$ ["DE", "Nothing to do"] 	= "Keine Aufgaben"
 uiMessage$ ["DE", "No readable recording selected "] = "Keine verwertbare Aufnahme ausgewählt "
@@ -930,7 +930,7 @@ uiMessage$ ["FR", "DoContinue"]		= "Voulez-vous continuer?"
 uiMessage$ ["FR", "SelectSound1"]	= "Sélectionnez le son et continuez"
 uiMessage$ ["FR", "SelectSound2"]	= "Il est possible de supprimer les sons indésirables de la sélection"
 uiMessage$ ["FR", "SelectSound3"]	= "Sélectionnez la partie indésirable, puis choisissez ""Cut"" dans le menu ""Edit"""
-uiMessage$ ["FR", "Stopped"]		= "VowelTriangle s'est arrêté"
+uiMessage$ ["FR", "Stopped"]		= "Pitch_and_Intensity_ranges s'est arrêté"
 uiMessage$ ["FR", "ErrorSound"]		= "Erreur: pas du son"
 uiMessage$ ["FR", "Nothing to do"] 	= "Rien à faire"
 uiMessage$ ["FR", "No readable recording selected "] = "Aucun enregistrement utilisable sélectionné "
@@ -984,7 +984,7 @@ uiMessage$ ["ZH", "DoContinue"] 	= "你想继续吗"
 uiMessage$ ["ZH", "SelectSound1"] 	= "选择声音并继续"
 uiMessage$ ["ZH", "SelectSound2"] 	= "可以从选择中删除不需要的声音"
 uiMessage$ ["ZH", "SelectSound3"] 	= "选择不需要的部分，然后从 ""Edit"" 菜单选择 ""Cut"""
-uiMessage$ ["ZH", "Stopped"] 		= "VowelTriangle 已停止运行"
+uiMessage$ ["ZH", "Stopped"] 		= "Pitch_and_Intensity_ranges 已停止运行"
 uiMessage$ ["ZH", "ErrorSound"] 	= "错误：不是声音"
 uiMessage$ ["ZH", "Nothing to do"] 	= "无法进行"
 uiMessage$ ["ZH", "No readable recording selected "] = "未选择可读取的录音 "
@@ -1037,7 +1037,7 @@ uiMessage$ ["ES", "DoContinue"]		= "¿Quieres continuar?"
 uiMessage$ ["ES", "SelectSound1"]	= "Selecciona el sonido y continúa"
 uiMessage$ ["ES", "SelectSound2"]	= "Es posible eliminar sonidos no deseados de la selección"
 uiMessage$ ["ES", "SelectSound3"]	= "Seleccione la parte no deseada, luego elija ""Cut"" desde el menú ""Edit"""
-uiMessage$ ["ES", "Stopped"]		= "VowelTriangle se ha detenido"
+uiMessage$ ["ES", "Stopped"]		= "Pitch_and_Intensity_ranges se ha detenido"
 uiMessage$ ["ES", "ErrorSound"]		= "Error: no hay sonido"
 uiMessage$ ["ES", "Nothing to do"] 	= "Nada que hacer"
 uiMessage$ ["ES", "No readable recording selected "] = "No se ha seleccionado ningún registro utilizable "
@@ -1090,7 +1090,7 @@ uiMessage$ ["PT", "DoContinue"]		= "Você quer continuar?"
 uiMessage$ ["PT", "SelectSound1"]	= "Selecione o som e continue"
 uiMessage$ ["PT", "SelectSound2"]	= "É possível remover sons indesejados da seleção"
 uiMessage$ ["PT", "SelectSound3"]	= "Selecione a parte indesejada, então escolha ""Cut"" no menu ""Edit"""
-uiMessage$ ["PT", "Stopped"]		= "VowelTriangle parou"
+uiMessage$ ["PT", "Stopped"]		= "Pitch_and_Intensity_ranges parou"
 uiMessage$ ["PT", "ErrorSound"]		= "Erro: não há som"
 uiMessage$ ["PT", "Nothing to do"] 	= "Nada para fazer"
 uiMessage$ ["PT", "No readable recording selected "] = "Nenhum registro utilizável foi selecionado"
@@ -1143,7 +1143,7 @@ uiMessage$ ["IT", "DoContinue"]		= "Vuoi continuare?"
 uiMessage$ ["IT", "SelectSound1"]	= "Seleziona il suono e continua"
 uiMessage$ ["IT", "SelectSound2"]	= "È possibile rimuovere i suoni indesiderati dalla selezione"
 uiMessage$ ["IT", "SelectSound3"]	= "Seleziona la parte indesiderata, quindi scegli ""Cut"" dal menu ""Edit"""
-uiMessage$ ["IT", "Stopped"]		= "VowelTriangle si è fermato"
+uiMessage$ ["IT", "Stopped"]		= "Pitch_and_Intensity_ranges si è fermato"
 uiMessage$ ["IT", "ErrorSound"]		= "Errore: non c'è suono"
 uiMessage$ ["IT", "Nothing to do"] 	= "Niente da fare"
 uiMessage$ ["IT", "No readable recording selected "] = "Nessun record utilizzabile è stato selezionato "
@@ -1488,4 +1488,14 @@ procedure write_settings .silence_Threshold .minimum_dip .minimum_pause .normali
 	appendFileLine: .preferencesLanguageFile$, "Minimum pause=", .minimum_pause
 	appendFileLine: .preferencesLanguageFile$, "Normalize intensity=", .normalize_intensity
 	appendFileLine: .preferencesLanguageFile$, "Scale=", .scale$
+endproc
+
+# A langue specific version of pauseScript. Can take only a single text argument
+procedure pauseScriptLanguage: .messageID$, .text$
+	beginPause: (uiMessage$ [uiLanguage$, "PauseRecord"])
+		comment: uiMessage$ [uiLanguage$, .messageID$] + .text$
+	.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
+	if .clicked = 1
+		exitScript: (uiMessage$ [uiLanguage$, "Stopped"])
+	endif
 endproc
