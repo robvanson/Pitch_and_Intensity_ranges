@@ -1487,7 +1487,7 @@ endproc
 procedure retrieve_settings
 	.defaultLanguage = 1
 	.preferencesLanguageFile$ = preferencesDirectory$+"/Pitch_and_Intensity.prefs"
-	.preferencesLang$ = ""
+	.preferencesLang$ = "EN"
 	.silence_Threshold = -25
 	.minimum_dip = 2
 	.minimum_pause = 0.3
