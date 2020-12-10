@@ -677,6 +677,10 @@ procedure read_and_select_audio .type .message1$ .message2$
 		.source = selected ("Sound")
 		.filename$ = "Recorded speech"
 	else
+		Erase all
+		Blue
+		Text special: 0, "left", 0.5, "half", "Helvetica", 16, "0", .message1$
+		Black
 		.filename$ = chooseReadFile$: .message1$
 
 		if .filename$ = "" or not fileReadable(.filename$) or not index_regex(.filename$, "(?i\.(wav|mp3|aif[fc]))")
@@ -705,6 +709,10 @@ procedure read_and_select_audio .type .message1$ .message2$
 		endif
 		editor: .source
 		endeditor
+		Erase all
+		Blue
+		Text special: 0, "left", 0.5, "half", "Helvetica", 16, "0", .message2$
+		Black
 		beginPause: .message2$
 			comment: (uiMessage$ [uiLanguage$, "SelectSound1"])
 			comment: (uiMessage$ [uiLanguage$, "SelectSound2"])
