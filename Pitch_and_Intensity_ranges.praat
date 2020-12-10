@@ -50,6 +50,7 @@ beginPause: "Measuring Pitch and Dynamic range"
 		option: "Bark"
 		option: "Semitones"
    boolean: "Normalize intensity", retrieve_settings.normalize_intensity
+   boolean: "Phonetogram (vowels only)", retrieve_settings.phonetogram
    optionMenu: .languageInput$, .defaultLanguage
 		option: "English"
 		option: "Nederlands"
@@ -100,7 +101,7 @@ elsif .display_language$ = "Italiano"
 endif
 
 # Store settings
-@write_settings: silence_threshold, minimum_dip_between_peaks, minimum_pause_duration, normalize_intensity, scale$
+@write_settings: silence_threshold, minimum_dip_between_peaks, minimum_pause_duration, normalize_intensity, phonetogram, scale$
 
 # Alert for crashed on Mac praat 6.1.17 and up
 if macintosh and praatVersion >= 6117 and praatVersion <= 6131
@@ -199,8 +200,17 @@ else
 		# Calculate values
 		selectObject: .soundFile
 		totalDuration = Get total duration
-		@syllable_nuclei: .soundFile
-		@pitch_dynamic_range: syllable_nuclei.soundid, syllable_nuclei.textgridid, scale$
+		if phonetogram
+			.pp = To PointProcess (periodic, cc): 60, 600
+			.textgrid = To TextGrid (vuv): 0.02, 0.01
+			@pitch_dynamic_range: .soundFile, .textgrid, scale$
+			selectObject: .pp
+			Remove
+		else
+			@syllable_nuclei: .soundFile
+			.textgrid = syllable_nuclei.textgridid
+			@pitch_dynamic_range: .soundFile, .textgrid, scale$
+		endif
 		
 		# Get title
 		.titleVar$ = uiMessage$ [uiLanguage$, "Title"]
@@ -265,7 +275,7 @@ else
 		endif
 
 		# Clean up
-		selectObject: syllable_nuclei.soundid, syllable_nuclei.textgridid, pitch_dynamic_range.table
+		selectObject: .soundFile, .textgrid, pitch_dynamic_range.table
 		Remove
 			
 		# Ready or not?
@@ -293,33 +303,86 @@ procedure pitch_dynamic_range .sound .textgrid .scale$
 	Remove
 	
 	# Extract values
+	# For running speech with vowel
 	selectObject: .textgrid
-	.numSyllables = Get number of points: 1
-	.table = Create Table with column names: "Values", .numSyllables, "i t "+.scale$+" Intensity"
-	for .i to .numSyllables
+	.phonetogram = Is interval tier: 1
+	if .phonetogram > 0
 		selectObject: .textgrid
-		.t = Get time of point: 1, .i
-		selectObject: .pitch
-		.f0 = Get value at time: .t
-		if .scale$ = "Mel"
-			.f0 = hertzToMel(.f0)
-		endif
-		if .scale$ = "Bark"
-			.f0 = hertzToBark(.f0)
-		endif
-		if .scale$ = "Semitones"
-			.f0 = hertzToSemitones(.f0)
-		endif
-		selectObject: .intensity
-		.int = Get value at time: .t
-		
-		# Write table
+		.numIntervals = Get number of intervals: 1
+		.table = Create Table with column names: "Values", 1, "i t "+.scale$+" Intensity"
+		# Run over all vowels
+		.r = 1
+		for .i to .numIntervals
+			selectObject: .textgrid
+			.vuv$ = Get label of interval: 1, .i
+			if .vuv$ = "V"
+				.start = Get start time of interval: 1, .i
+				.end = Get end time of interval: 1, .i
+				selectObject: .pitch
+				.first = Get high index from time: .start
+				.last = Get low index from time: .end
+				for .j from .first to .last
+					selectObject: .pitch
+					.t = Get time from index: .j
+					.f0 = Get value at index: .j
+					if .scale$ = "Mel"
+						.f0 = hertzToMel(.f0)
+					endif
+					if .scale$ = "Bark"
+						.f0 = hertzToBark(.f0)
+					endif
+					if .scale$ = "Semitones"
+						.f0 = hertzToSemitones(.f0)
+					endif
+					selectObject: .intensity
+					.int = Get value at time: .t
+					
+					# Write table
+					selectObject: .table
+					Set numeric value: .r, "i", .r
+					Set numeric value: .r, "t", .t
+					Set numeric value: .r, scale$, .f0
+					Set numeric value: .r, "Intensity", .int
+					
+					Append row
+					.r += 1
+					
+				endfor
+			endif
+		endfor
+		# Remove last, empty row
 		selectObject: .table
-		Set numeric value: .i, "i", .i
-		Set numeric value: .i, "t", .t
-		Set numeric value: .i, scale$, .f0
-		Set numeric value: .i, "Intensity", .int
-	endfor
+		.numRows = Get number of rows
+		Remove row: .numRows
+	else
+		selectObject: .textgrid
+		.numSyllables = Get number of points: 1
+		.table = Create Table with column names: "Values", .numSyllables, "i t "+.scale$+" Intensity"
+		for .i to .numSyllables
+			selectObject: .textgrid
+			.t = Get time of point: 1, .i
+			selectObject: .pitch
+			.f0 = Get value at time: .t
+			if .scale$ = "Mel"
+				.f0 = hertzToMel(.f0)
+			endif
+			if .scale$ = "Bark"
+				.f0 = hertzToBark(.f0)
+			endif
+			if .scale$ = "Semitones"
+				.f0 = hertzToSemitones(.f0)
+			endif
+			selectObject: .intensity
+			.int = Get value at time: .t
+			
+			# Write table
+			selectObject: .table
+			Set numeric value: .i, "i", .i
+			Set numeric value: .i, "t", .t
+			Set numeric value: .i, scale$, .f0
+			Set numeric value: .i, "Intensity", .int
+		endfor
+	endif
 		
 	selectObject: .pitch, .intensity
 	Remove
@@ -392,7 +455,10 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	.meanF0 = Get mean: .scale$
 	.sdF0 = Get standard deviation: .scale$
 	if .resetAxis
-		@set_axes: .scale$, .meanF0 - 2*.sdF0, .meanF0 + 2*.sdF0
+		if phonetogram
+			bottomAxis = 45
+		endif
+		@set_axes: .scale$, .meanF0 - 2*.sdF0, .meanF0 + 2*.sdF0, phonetogram
 	endif
 	@calculate_ellipse: .cleanTable
 	.area = calculate_ellipse.area
@@ -518,35 +584,59 @@ procedure set_up_Canvas
 endproc
 
 # Set axis boundaries
-procedure set_axes .scale$ .lowPitch .highPitch
+procedure set_axes .scale$ .lowPitch .highPitch .phonetogram
 	.lowest = 50
 	.highest = 200
 	.range = 4
+	if .phonetogram > 0
+		.highest = 400
+		.range = 6
+	endif
 	
 	# Bark
 	if .scale$ = "Bark"
 		.lowest = 0.5
 		.highest = 2.2
 		.range = 2
+		if .phonetogram > 0
+			.lowest = 0.2
+			.highest = 2.5
+			.range = 5
+		endif
 		.step = .range/8
 	# Semitones
 	elsif .scale$ = "Semitones"
 		.lowest = -12
 		.highest = 12
 		.range = 30
-		.step = 3
+		if .phonetogram > 0
+			.lowest = -15
+			.highest = 15
+			.range = 60
+		endif
+		.step = .range / 10
 	# Mel
 	elsif .scale$ = "Mel"
 		.lowest = 50
 		.highest = 175
 		.range = 175
+		if .phonetogram > 0
+			.lowest = 40
+			.highest = 200
+			.range = 350
+		endif
 		.step = 15
 	# Hz
 	elsif .scale$ = "Hz"
 		.lowest = 50
 		.highest = 200
 		.range = 5
-		.step = 25
+		if .phonetogram > 0
+			.lowest = 40
+			.highest = 300
+			.range = 15
+		endif
+		.step = .lowest / 2
 	endif
 
 	.lowBoundary = .lowest
@@ -557,7 +647,7 @@ procedure set_axes .scale$ .lowPitch .highPitch
 			.highBoundary = .lowBoundary + .range
 		endif
 		
-		if .highBoundary >= .highPitch   
+		if .highBoundary >= .highPitch or .lowBoundary >= .lowPitch
 			leftAxis = .lowBoundary
 			rightAxis = .highBoundary
 			goto LAST
@@ -1402,6 +1492,7 @@ procedure retrieve_settings
 	.minimum_dip = 2
 	.minimum_pause = 0.3
 	.normalize_intensity = 1
+	.phonetogram = 0
 	.scale_default = 4
 
 	if fileReadable(.preferencesLanguageFile$)
@@ -1460,6 +1551,13 @@ procedure retrieve_settings
 			.normalize_intensity = 1
 		endif
 		
+		# Phonetogram
+		if index(.preferences$, "Phonetogram=") > 0
+			.phonetogram = extractNumber(.preferences$, "Phonetogram=")
+		else
+			.phonetogram = 0
+		endif
+		
 		# Always assume that the preferences file could be corrupted
 		if index(.preferences$, "Scale=") > 0
 			.tmp$ = extractWord$(.preferences$, "Scale=")
@@ -1479,7 +1577,7 @@ procedure retrieve_settings
 	endif
 endproc
 
-procedure write_settings .silence_Threshold .minimum_dip .minimum_pause .normalize_intensity .scale$
+procedure write_settings .silence_Threshold .minimum_dip .minimum_pause .normalize_intensity .phonetogram .scale$
 	# Store preferences
 	.preferencesLanguageFile$ = preferencesDirectory$+"/Pitch_and_Intensity.prefs"
 	writeFileLine: .preferencesLanguageFile$, "Language=", uiLanguage$
@@ -1487,6 +1585,7 @@ procedure write_settings .silence_Threshold .minimum_dip .minimum_pause .normali
 	appendFileLine: .preferencesLanguageFile$, "Minimum dip=", .minimum_dip
 	appendFileLine: .preferencesLanguageFile$, "Minimum pause=", .minimum_pause
 	appendFileLine: .preferencesLanguageFile$, "Normalize intensity=", .normalize_intensity
+	appendFileLine: .preferencesLanguageFile$, "Phonetogram=", .phonetogram
 	appendFileLine: .preferencesLanguageFile$, "Scale=", .scale$
 endproc
 
