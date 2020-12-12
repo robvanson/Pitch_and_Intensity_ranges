@@ -157,7 +157,7 @@ if non_interactive
 			# Plot
 			.horizontal$ = """"+scale$+""", 'leftAxis', 'rightAxis'"
 			.vertical$ = """Intensity"", 'bottomAxis', 'topAxis'"
-			@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "'ifile'", 2, first, 1
+			@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "'ifile'", 2, first, 1, phonetogram
 			first = 0
 			
 			printline 'syllable_nuclei.soundname$';'syllable_nuclei.voicedcount';'syllable_nuclei.npause';'syllable_nuclei.originaldur:2';'syllable_nuclei.speakingtot:2';'syllable_nuclei.speakingrate:2';'syllable_nuclei.articulationrate:2';'syllable_nuclei.asd:3'
@@ -257,7 +257,7 @@ else
 		# Plot
 		.horizontal$ = """"+scale$+""", 'leftAxis', 'rightAxis'"
 		.vertical$ = """Intensity (dB)"", 'bottomAxis', 'topAxis'"
-		@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "\bu", 2, first, .resetAxis
+		@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "\bu", 2, first, .resetAxis, phonetogram
 		
 		# Print info
 		# "Mean Int;SD Int;Mean 'scale$';SD 'scale$';Slope;Rsqr;N;Outliers;Area;Duration;Title"
@@ -389,7 +389,7 @@ procedure pitch_dynamic_range .sound .textgrid .scale$
 	
 endproc
 
-procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, .first, .resetAxis
+procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, .first, .resetAxis, .phonetogram
 	.garnish$ = "no"
 	
 	.scale$ = replace_regex$(.horizontal$, "^""([^""]+)"".*$", "\1", 0)
@@ -481,7 +481,14 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	selectObject: .table
 	# Change column name to get correct axis label
 	Set column label (label): "Intensity", "Intensity (dB)"
+
+	if .phonetogram
+		Colour: {1,0.8431373,0}
+		Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, 15, .garnish$, "\bu"
+		Black
+	endif
 	Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
+
 	Marks left every: 1, 10, "no", "yes", "no"
 	.every = 20
 	if rightAxis - leftAxis < 1.5
