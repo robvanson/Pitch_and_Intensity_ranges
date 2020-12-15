@@ -483,6 +483,8 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	Set column label (label): "Intensity", "Intensity (dB)"
 
 	Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
+
+	# Plot Phonetogram
 	if .phonetogram
 		.nAxisBins = 20
 		.bins = Create Table with column names: "Bins", 1, "coord x y n"
@@ -541,11 +543,29 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 			Paint rectangle: {.r,.g,.b}, .x, .x + .dx, .y, .y + .dy 
 		endfor
 		Black
+		# Plot legenda
+		.n = 1
+		.topSquare = topAxis
+		while .n > 0.01
+			.r = 1 - (1 - .rMax)*.n
+			.g = 1 - (1 - .gMax)*.n
+			.b = 1 - (1 - .bMax)*.n
+
+			Paint rectangle: {.r,.g,.b}, rightAxis, rightAxis + .dx, .topSquare, .topSquare - .dy
+			if (round(.n*10) mod 2) = 0
+				Text special: rightAxis + .dx, "left", .topSquare, "half", "Helvetica", 10, "0", fixed$(.n, 1)
+			endif
+			.n -= 0.1
+			.topSquare -= .dy/2
+		endwhile
+		Text special: rightAxis + .dx, "left", .topSquare, "half", "Helvetica", 10, "0", "0.0"
+		
+		# Redraw dots in Red
+		selectObject: .table
+		Red
+		Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
+		Black
 	endif
-	selectObject: .table
-	Red
-	Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
-	Black
 
 	Marks left every: 1, 10, "no", "yes", "no"
 	.every = 20
