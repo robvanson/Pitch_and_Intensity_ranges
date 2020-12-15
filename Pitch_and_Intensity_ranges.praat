@@ -482,12 +482,70 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	# Change column name to get correct axis label
 	Set column label (label): "Intensity", "Intensity (dB)"
 
+	Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
 	if .phonetogram
-		Colour: {1,0.8431373,0}
-		Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, 15, .garnish$, "\bu"
+		.nAxisBins = 20
+		.bins = Create Table with column names: "Bins", 1, "coord x y n"
+		selectObject: .table
+		.nrows = Get number of rows
+		.dx = (rightAxis - leftAxis) / .nAxisBins
+		.dy = (topAxis - bottomAxis) / .nAxisBins
+		for .r to .nrows
+			selectObject: .table
+			.x = Get value: .r, .scale$
+			.y = Get value: .r, "Intensity (dB)"
+			
+			.xBin = floor((.x - leftAxis) / .dx)
+			.yBin = floor((.y - bottomAxis) / .dy)
+			.coordinate$ = "'.xBin';'.yBin'"
+
+			if .xBin >= 0 and .xBin < .nAxisBins and .yBin >= 0 and .yBin < .nAxisBins
+				selectObject: .bins
+				.c = Search column: "coord", .coordinate$
+				if .c > 0
+					.n = Get value: .c, "n"
+					.n += 1
+					Set numeric value: .c, "n", .n
+				else
+					.c = Get number of rows
+					Set string value: .c, "coord", .coordinate$
+					Set numeric value: .c, "x", .xBin
+					Set numeric value: .c, "y", .yBin
+					Set numeric value: .c, "n", 1
+					Append row
+				endif
+			endif
+		endfor
+		selectObject: .bins
+		.nBins = Get number of rows
+		Remove row: .nBins
+		.nBins = Get number of rows
+		.nTotal = .nrows
+		Formula (column range): "n", "n", "self / '.nBins'"
+		.rMax = 1
+		.gMax = 0.8431373
+		.bMax = 0
+		selectObject: .bins
+		.nBins = Get number of rows
+		for .ib to .nBins
+			.xBin = Get value: .ib, "x"
+			.x = leftAxis + .xBin * .dx
+			.yBin = Get value: .ib, "y"
+			.y = bottomAxis + .yBin * .dy
+
+			.n = Get value: .ib, "n"
+			.r = 1 - (1 - .rMax)*.n
+			.g = 1 - (1 - .gMax)*.n
+			.b = 1 - (1 - .bMax)*.n
+
+			Paint rectangle: {.r,.g,.b}, .x, .x + .dx, .y, .y + .dy 
+		endfor
 		Black
 	endif
+	selectObject: .table
+	Red
 	Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
+	Black
 
 	Marks left every: 1, 10, "no", "yes", "no"
 	.every = 20
