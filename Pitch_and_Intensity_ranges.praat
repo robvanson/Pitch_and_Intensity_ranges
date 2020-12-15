@@ -484,7 +484,12 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 
 	Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
 
+	##################################################################
+	# 
 	# Plot Phonetogram
+	# 
+	##################################################################
+	
 	if .phonetogram
 		.nAxisBins = 20
 		.bins = Create Table with column names: "Bins", 1, "coord x y n"
@@ -523,7 +528,8 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 		Remove row: .nBins
 		.nBins = Get number of rows
 		.nTotal = .nrows
-		Formula (column range): "n", "n", "self / '.nBins'"
+		.nMax = Get maximum: "n"
+		Formula (column range): "n", "n", "self / '.nMax'"
 		.rMax = 1
 		.gMax = 0.8431373
 		.bMax = 0
@@ -544,6 +550,7 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 		endfor
 		Black
 		# Plot legenda
+		Text special: rightAxis + .dx, "right", topAxis, "bottom", "Helvetica", 10, "0", "Max='.nMax'"
 		.n = 1
 		.topSquare = topAxis
 		while .n > 0.01
