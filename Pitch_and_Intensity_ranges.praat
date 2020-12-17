@@ -572,6 +572,56 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 		Red
 		Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
 		Black
+		
+		# Determine minimum and maximum per X-axis bin
+		selectObject: .bins
+		.minX = Get minimum: "x"
+		.maxX = Get maximum: "x"
+		# Set up array
+		for .i from .minX+1 to .maxX + 1
+			.minInt [.i] = 1e10
+			.maxInt [.i] = -1e10
+		endfor
+		# Fill upper and lower Intensities 
+		for .r to .nBins
+			selectObject: .bins
+			.n = Get value: .r, "n"
+			if .n > 0.1
+				.x = Get value: .r, "x"
+				.y = Get value: .r, "y"
+				if .y < .minInt [.x+1]
+					.minInt [.x+1] = .y
+				endif 
+				if .y > .maxInt [.x+1]
+					.maxInt [.x+1] = .y
+				endif 
+			endif
+		endfor
+		
+		Red
+		for .i from .minX to .maxX
+			.x = leftAxis + .i * .dx
+			.yMin = bottomAxis + .minInt [.i+1] * .dy
+			.yMax = bottomAxis + .maxInt [.i+1] * .dy + .dy
+			
+			if .minInt [.i+1] < 1e10
+				Draw line: .x, .yMin,  .x + .dx, .yMin
+				if .i+2 < .maxX+1 and .minInt [.i+2] < 1e10
+					.yMinNext = bottomAxis + .minInt [.i+2] * .dy
+					Draw line: .x + .dx, .yMin,  .x + .dx, .yMinNext
+				endif
+			endif
+			
+			if .maxInt [.i+1] > -1e10
+				Draw line: .x, .yMax,  .x + .dx, .yMax
+				if .i+2 < .maxX+1 and .maxInt [.i+2] > -1e10
+					.yMaxNext = bottomAxis + .maxInt [.i+2] * .dy + .dy
+					Draw line: .x + .dx, .yMax,  .x + .dx, .yMaxNext
+				endif
+			endif
+		endfor
+		Black
+		
 	endif
 
 	Marks left every: 1, 10, "no", "yes", "no"
