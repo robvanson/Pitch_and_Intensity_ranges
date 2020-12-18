@@ -550,6 +550,7 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 		endfor
 		Black
 		# Plot legenda
+		.boundaryLevel = 0.1
 		Text special: rightAxis + .dx, "right", topAxis, "bottom", "Helvetica", 10, "0", "Max='.nMax'"
 		.n = 1
 		.topSquare = topAxis
@@ -565,12 +566,16 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 			.n -= 0.1
 			.topSquare -= .dy/2
 		endwhile
+		Red
+		.y = topAxis - (10 - 10*.boundaryLevel)*.dy/2
+		Draw line: rightAxis, .y, rightAxis + .dx, .y
+		Black
 		Text special: rightAxis + .dx, "left", .topSquare, "half", "Helvetica", 10, "0", "0.0"
 		
 		# Redraw dots in Red
 		selectObject: .table
 		Red
-		Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize, .garnish$, .mark$
+		Scatter plot (mark): .scale$, leftAxis, rightAxis, "Intensity (dB)", bottomAxis, topAxis, .currentMarkSize*10/.nTotal, .garnish$, "\.c"
 		Black
 		
 		# Determine minimum and maximum per X-axis bin
@@ -623,6 +628,8 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 		Black
 		
 	endif
+	
+	##################################################################
 
 	Marks left every: 1, 10, "no", "yes", "no"
 	.every = 20
