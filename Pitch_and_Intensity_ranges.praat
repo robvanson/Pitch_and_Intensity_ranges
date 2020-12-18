@@ -591,7 +591,7 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 		for .r to .nBins
 			selectObject: .bins
 			.n = Get value: .r, "n"
-			if .n > 0.1
+			if .n > .boundaryLevel
 				.x = Get value: .r, "x"
 				.y = Get value: .r, "y"
 				if .y < .minInt [.x+1]
