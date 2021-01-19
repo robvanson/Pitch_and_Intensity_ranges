@@ -832,7 +832,7 @@ procedure read_and_select_audio .type .message1$ .message2$
 		Black
 		.filename$ = chooseReadFile$: .message1$
 
-		if .filename$ = "" or not fileReadable(.filename$) or not index_regex(.filename$, "(?i\.(wav|mp3|aif[fc]))")
+		if .filename$ = "" or not fileReadable(.filename$) or not index_regex(.filename$, "(?i\.(wav|mp3|flac|aif[fc]|snd|next|nist))")
 			@pauseScriptLanguage: "No readable recording selected ", .filename$
 			goto RETURN
 		endif
