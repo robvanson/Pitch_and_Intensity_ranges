@@ -10,3 +10,5 @@ When the option "Phonetigram" is checked, every voiced frames (d=10ms)
 will be used to draw the phonetogram. Only makes sense for sustained 
 vowels tracing the pitch range (low-high) and the loudness range 
 (soft-loud).
+
+https://zenodo.org/badge/DOI/10.5281/zenodo.21476263.svg
