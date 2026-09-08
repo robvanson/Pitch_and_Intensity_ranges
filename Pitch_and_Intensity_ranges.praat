@@ -2,7 +2,7 @@
 ###########################################################################
 #                                                                         #
 #  Praat Script Pitch_and_Intensity_ranges                                #
-#  Copyright (C) 2020  R.J.J.H. van Son                                   #
+#  Copyright (C) 2020-2026  R.J.J.H. van Son                                   #
 #                                                                         #
 #    This program is free software: you can redistribute it and/or modify #
 #    it under the terms of the GNU General Public License as published by #
@@ -23,270 +23,299 @@
 # Syllable Nuclei script by de Jong and Wempe
 #
 
-# Initialize
-# Set current Locale
-.defaultLanguage = 1
-uiLanguage$ = "EN"
-
-# Initialize messages
-call intialize_UI_messages
-
-call retrieve_settings
-.defaultLanguage = retrieve_settings.defaultLanguage
-uiLanguage$ = retrieve_settings.preferencesLang$
-.languageInput$ = uiMessage$ [uiLanguage$, "Interface Language"]
-.languageInputVar$ = replace_regex$(.languageInput$, "^([A-Z])", "\l\1", 0)
-.languageInputVar$ = replace_regex$(.languageInputVar$, "\s*\(.*$", "", 0)
-.languageInputVar$ = replace_regex$(.languageInputVar$, "(\s|[.?!()/\\\\])", "_", 0)
-
-beginPause: "Measuring Pitch and Dynamic range"
-   real: "Silence threshold (dB)", retrieve_settings.silence_Threshold
-   real: "Minimum dip between peaks (dB)", retrieve_settings.minimum_dip
-   real: "Minimum pause duration (s)", retrieve_settings.minimum_pause
-   #sentence directory Audio
-   optionMenu: "Scale", retrieve_settings.scale_default
-		option: "Hz"
-		option: "Mel"
-		option: "Bark"
-		option: "Semitones"
-   boolean: "Normalize intensity", retrieve_settings.normalize_intensity
-   boolean: "Phonetogram (vowels only)", retrieve_settings.phonetogram
-   optionMenu: .languageInput$, .defaultLanguage
-		option: "English"
-		option: "Nederlands"
-		option: "Deutsch"
-		option: "Français"
-		option: "汉语"
-		option: "Español"
-		option: "Português"
-		option: "Italiano"
-	#   option: "MyLanguage"   
-.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
-
-if .clicked = 1
-	.continue = 0
-	.message$ = uiMessage$ [uiLanguage$, "Nothing to do"]
-	exitScript: .message$
+if not variableExists ("runInsideSpeechAnalysisAVL") 
+	@pai_ranges_main
 endif
 
-uiLanguage$ = "EN"
-.defaultLanguage = 1
-.display_language$ = '.languageInputVar$'$
-if .display_language$ = "Nederlands"
-	uiLanguage$ = "NL"
-	.defaultLanguage = 2
-elsif .display_language$ = "Deutsch"
-	uiLanguage$ = "DE"
-	.defaultLanguage = 3
-elsif .display_language$ = "Français"
-	uiLanguage$ = "FR"
-	.defaultLanguage = 4
-elsif .display_language$ = "汉语"
-	uiLanguage$ = "ZH"
-	.defaultLanguage = 5
-elsif .display_language$ = "Español"
-	uiLanguage$ = "ES"
-	.defaultLanguage = 6
-elsif .display_language$ = "Português"
-	uiLanguage$ = "PT"
-	.defaultLanguage = 7
-elsif .display_language$ = "Italiano"
-	uiLanguage$ = "IT"
-	.defaultLanguage = 8
+#############################################
 #
-# Add a new language
-# elsif .display_language$ = "MyLanguage"
-#	uiLanguage$ = "MyCode"
-#	.defaultLanguage = 9
-endif
+# Main procedure
+# 
+#############################################
 
-# Store settings
-@write_settings: silence_threshold, minimum_dip_between_peaks, minimum_pause_duration, normalize_intensity, phonetogram, scale$
+procedure pai_ranges_main
 
-# Alert for crashed on Mac praat 6.1.17 and up
-if macintosh and praatVersion >= 6117 and praatVersion <= 6131
-	beginPause: "Warning"
-		comment: "The script can crash unexpectedly on Mac OSX with Praat 6.1.17-6.1.31."
-		comment: "Please upgrade to Praat 6.1.32 or higher."
-	clicked = endPause: (uiMessage$ [uiLanguage$, "Continue"]), 0
-endif
+	# Initialize
+	# Set current Locale
+	.defaultLanguage = 1
+	uiLanguage$ = "EN"
 
-# shorten variables
-silencedb = silence_threshold
-mindip = minimum_dip_between_peaks
-showtext = 1
-minpause = minimum_pause_duration
+	# Initialize messages
+	call intialize_UI_messages
 
-# Global values
-pitchFloor = 75
-non_interactive = 0
-.recording = 0
+	call retrieve_settings
+	.defaultLanguage = retrieve_settings.defaultLanguage
+	uiLanguage$ = retrieve_settings.preferencesLang$
+	.languageInput$ = pai.uiMessage$ [uiLanguage$, "Interface Language"]
+	.languageInputVar$ = replace_regex$(.languageInput$, "^([A-Z])", "\l\1", 0)
+	.languageInputVar$ = replace_regex$(.languageInputVar$, "\s*\(.*$", "", 0)
+	.languageInputVar$ = replace_regex$(.languageInputVar$, "(\s|[.?!()/\\\\])", "_", 0)
 
-bottomAxis = 60
-topAxis = 90
-leftAxis = 50
-rightAxis = 200
-if scale$ = "Hz"
-	precission = 0
-elsif scale$ = "Mel"
-	precission = 0
-elsif scale$ = "Bark"
-	precission = 2
-elsif scale$ = "Semitones"
-	precission = 1
-endif
+	beginPause: "Measuring Pitch and Dynamic range"
+	   real: "Silence threshold (dB)", retrieve_settings.silence_Threshold
+	   real: "Minimum dip between peaks (dB)", retrieve_settings.minimum_dip
+	   real: "Minimum pause duration (s)", retrieve_settings.minimum_pause
+	   #sentence directory Audio
+	   optionMenu: "Scale", retrieve_settings.scale_default
+			option: "Hz"
+			option: "Mel"
+			option: "Bark"
+			option: "Semitones"
+	   boolean: "Normalize intensity", retrieve_settings.normalize_intensity
+	   boolean: "Phonetogram (vowels only)", retrieve_settings.phonetogram
+	   optionMenu: .languageInput$, .defaultLanguage
+			option: "English"
+			option: "Nederlands"
+			option: "Deutsch"
+			option: "Français"
+			option: "汉语"
+			option: "Español"
+			option: "Português"
+			option: "Italiano"
+		#   option: "MyLanguage"   
+	.clicked = endPause: (pai.uiMessage$ [uiLanguage$, "Stop"]), (pai.uiMessage$ [uiLanguage$, "Continue"]), 2, 1
 
-enteredTitle$ = uiMessage$ [uiLanguage$, "untitled"]
+	if .clicked = 1
+		.continue = 0
+		goto LASTROUNDPAIR
+		.message$ = pai.uiMessage$ [uiLanguage$, "Nothing to do"]
+		exitScript: .message$
+	endif
+
+	uiLanguage$ = "EN"
+	.defaultLanguage = 1
+	.display_language$ = '.languageInputVar$'$
+	if .display_language$ = "Nederlands"
+		uiLanguage$ = "NL"
+		.defaultLanguage = 2
+	elsif .display_language$ = "Deutsch"
+		uiLanguage$ = "DE"
+		.defaultLanguage = 3
+	elsif .display_language$ = "Français"
+		uiLanguage$ = "FR"
+		.defaultLanguage = 4
+	elsif .display_language$ = "汉语"
+		uiLanguage$ = "ZH"
+		.defaultLanguage = 5
+	elsif .display_language$ = "Español"
+		uiLanguage$ = "ES"
+		.defaultLanguage = 6
+	elsif .display_language$ = "Português"
+		uiLanguage$ = "PT"
+		.defaultLanguage = 7
+	elsif .display_language$ = "Italiano"
+		uiLanguage$ = "IT"
+		.defaultLanguage = 8
+	#
+	# Add a new language
+	# elsif .display_language$ = "MyLanguage"
+	#	uiLanguage$ = "MyCode"
+	#	.defaultLanguage = 9
+	endif
+
+	# Store settings
+	@write_settings: silence_threshold, minimum_dip_between_peaks, minimum_pause_duration, normalize_intensity, phonetogram, scale$
+
+	# Alert for crashed on Mac praat 6.1.17 and up
+	if macintosh and praatVersion >= 6117 and praatVersion <= 6131
+		beginPause: "Warning"
+			comment: "The script can crash unexpectedly on Mac OSX with Praat 6.1.17-6.1.31."
+			comment: "Please upgrade to Praat 6.1.32 or higher."
+		clicked = endPause: (pai.uiMessage$ [uiLanguage$, "Continue"]), 0
+	endif
+
+	# shorten variables
+	silencedb = silence_threshold
+	mindip = minimum_dip_between_peaks
+	showtext = 1
+	minpause = minimum_pause_duration
+
+	# Global values
+	pitchFloor = 75
+	non_interactive = 0
+	.recording = 0
+
+	bottomAxis = 60
+	topAxis = 90
+	leftAxis = 50
+	rightAxis = 200
+	if scale$ = "Hz"
+		precission = 0
+	elsif scale$ = "Mel"
+		precission = 0
+	elsif scale$ = "Bark"
+		precission = 2
+	elsif scale$ = "Semitones"
+		precission = 1
+	endif
+
+	enteredTitle$ = pai.uiMessage$ [uiLanguage$, "untitled"]
 
 
-# read files
-if non_interactive
-	Create Strings as file list... list 'directory$'/*
-	numberOfFiles = Get number of strings
-	first = 1
-	for ifile to numberOfFiles
-	   select Strings list
-	   fileName$ = Get string... ifile
-	   if index_regex(fileName$, "\.(?iwav|aifc|aiff|flac|mp3|snd|next|nist)$")
-			.soundFile = Read from file... 'directory$'/'fileName$'
-		   
-			call syllable_nuclei .soundFile
+	# read files
+	if non_interactive
+		Create Strings as file list... list 'directory$'/*
+		numberOfFiles = Get number of strings
+		first = 1
+		for ifile to numberOfFiles
+		   select Strings list
+		   fileName$ = Get string... ifile
+		   if index_regex(fileName$, "\.(?iwav|aifc|aiff|flac|mp3|snd|next|nist)$")
+				.soundFile = Read from file... 'directory$'/'fileName$'
+			   
+				call syllable_nuclei .soundFile
+				
+				@pitch_dynamic_range: syllable_nuclei.soundid, syllable_nuclei.textgridid, scale$
+				
+				# Plot
+				.horizontal$ = """"+scale$+""", 'leftAxis', 'rightAxis'"
+				.vertical$ = """Intensity"", 'bottomAxis', 'topAxis'"
+				@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "'ifile'", 2, first, 1, phonetogram
+				first = 0
+				
+				printline 'syllable_nuclei.soundname$';'syllable_nuclei.voicedcount';'syllable_nuclei.npause';'syllable_nuclei.originaldur:2';'syllable_nuclei.speakingtot:2';'syllable_nuclei.speakingrate:2';'syllable_nuclei.articulationrate:2';'syllable_nuclei.asd:3'
+			endif
+		endfor
+	else
+		
+		###############################################
+		#
+		# Start program: Interactive
+		#
+		###############################################
+		.continue = 1
+		# Run master loop
+		left = 0
+		right = 0
+		bottom = 0
+		top = 0
+		writeInfoLine: "Mean Int;SD Int;Mean 'scale$';SD 'scale$';Slope;R;Area;N;Outliers;Duration;Title"
+		while .continue
+			first = 1
 			
-			@pitch_dynamic_range: syllable_nuclei.soundid, syllable_nuclei.textgridid, scale$
+			# Open sound and select
+			.open1$ = pai.uiMessage$ [uiLanguage$, "Open1"]
+			.open2$ = pai.uiMessage$ [uiLanguage$, "Open2"]
+			@read_and_select_audioPaIR: .recording, .open1$ , .open2$
+
+			if read_and_select_audioPaIR.sound < 1
+				goto LASTROUNDPAIR
+			endif
+			.soundFile = read_and_select_audioPaIR.sound
+			if enteredTitle$ = pai.uiMessage$ [uiLanguage$, "untitled"]
+				titleText$ = replace_regex$(read_and_select_audioPaIR.filename$, "\.[^\.]+$", "", 0)
+				titleText$ = replace_regex$(titleText$, "^.*/([^/]+)$", "\1", 0)
+				titleText$ = replace_regex$(titleText$, "_", " ", 0)
+			else
+				titleText$ = enteredTitle$
+			endif
+
+			# Calculate values
+			selectObject: .soundFile
+			totalDuration = Get total duration
+			if phonetogram
+				.pp = To PointProcess (periodic, cc): 60, 600
+				.textgrid = To TextGrid (vuv): 0.02, 0.01
+				@pitch_dynamic_range: .soundFile, .textgrid, scale$
+				selectObject: .pp
+				Remove
+			else
+				@syllable_nuclei: .soundFile
+				.textgrid = syllable_nuclei.textgridid
+				@pitch_dynamic_range: .soundFile, .textgrid, scale$
+			endif
+			
+			# Get title
+			.titleVar$ = pai.uiMessage$ [uiLanguage$, "Title"]
+			.titleVar$ = replace_regex$(.titleVar$, "^([A-Z])", "\l\1", 0)
+			beginPause: "Select a title"
+				sentence: pai.uiMessage$ [uiLanguage$, "Title"], titleText$
+				comment: "Axes"
+				real: pai.uiMessage$ [uiLanguage$, "Left"], left
+				real: pai.uiMessage$ [uiLanguage$, "Right"], right
+				real: pai.uiMessage$ [uiLanguage$, "Bottom"], bottom
+				real: pai.uiMessage$ [uiLanguage$, "Top"], top
+			.clicked = endPause: (pai.uiMessage$ [uiLanguage$, "Stop"]), (pai.uiMessage$ [uiLanguage$, "Continue"]), 2, 1	
+			if .clicked = 1
+				.continue = 0
+				goto LASTROUNDPAIR
+				.message$ = pai.uiMessage$ [uiLanguage$, "Nothing to do"]
+				exitScript: .message$
+			endif
+			if '.titleVar$'$ = ""
+				enteredTitle$ = pai.uiMessage$ [uiLanguage$, "untitled"]
+			elsif '.titleVar$'$ != pai.uiMessage$ [uiLanguage$, "untitled"] and index_regex('.titleVar$'$, "[^\s]")
+				if titleText$ <> '.titleVar$'$
+					enteredTitle$ = '.titleVar$'$
+				endif
+				titleText$ = '.titleVar$'$
+			endif
+			.resetAxis = 1
+			if left != 0
+				leftAxis = left
+				.resetAxis = 0
+			endif
+			if right != 0
+				rightAxis = right
+				.resetAxis = 0
+			endif
+			if bottom != 0
+				bottomAxis = bottom
+				.resetAxis = 0
+			endif
+			if top != 0
+				topAxis = top
+				.resetAxis = 0
+			endif
 			
 			# Plot
 			.horizontal$ = """"+scale$+""", 'leftAxis', 'rightAxis'"
-			.vertical$ = """Intensity"", 'bottomAxis', 'topAxis'"
-			@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "'ifile'", 2, first, 1, phonetogram
-			first = 0
+			.vertical$ = """Intensity (dB)"", 'bottomAxis', 'topAxis'"
+			@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "\bu", 2, first, .resetAxis, phonetogram
 			
-			printline 'syllable_nuclei.soundname$';'syllable_nuclei.voicedcount';'syllable_nuclei.npause';'syllable_nuclei.originaldur:2';'syllable_nuclei.speakingtot:2';'syllable_nuclei.speakingrate:2';'syllable_nuclei.articulationrate:2';'syllable_nuclei.asd:3'
-		endif
-	endfor
-else
-	
-	###############################################
-	#
-	# Start program: Interactive
-	#
-	###############################################
-	.continue = 1
-	# Run master loop
-	left = 0
-	right = 0
-	bottom = 0
-	top = 0
-	writeInfoLine: "Mean Int;SD Int;Mean 'scale$';SD 'scale$';Slope;R;Area;N;Outliers;Duration;Title"
-	while .continue
-		first = 1
+			# Print info
+			# "Mean Int;SD Int;Mean 'scale$';SD 'scale$';Slope;Rsqr;N;Outliers;Area;Duration;Title"
+			appendInfoLine: fixed$(plot_Pitch_Int_table.meanInt, precission+1), ";", fixed$(plot_Pitch_Int_table.sdInt, precission+1), ";", fixed$(plot_Pitch_Int_table.meanF0, precission+1), ";", fixed$(plot_Pitch_Int_table.sdF0, precission+1), ";", fixed$(plot_Pitch_Int_table.slope, precission+3), ";", fixed$(plot_Pitch_Int_table.r, precission+2), ";", fixed$(plot_Pitch_Int_table.area, precission), ";", plot_Pitch_Int_table.nrows, ";", plot_Pitch_Int_table.removed, ";", fixed$(totalDuration, precission), ";", titleText$
 		
-		# Open sound and select
-		.open1$ = uiMessage$ [uiLanguage$, "Open1"]
-		.open2$ = uiMessage$ [uiLanguage$, "Open2"]
-		@read_and_select_audio: .recording, .open1$ , .open2$
-
-		if read_and_select_audio.sound < 1
-			goto NEXTROUND
-		endif
-		.soundFile = read_and_select_audio.sound
-		if enteredTitle$ = uiMessage$ [uiLanguage$, "untitled"]
-			titleText$ = replace_regex$(read_and_select_audio.filename$, "\.[^\.]+$", "", 0)
-			titleText$ = replace_regex$(titleText$, "^.*/([^/]+)$", "\1", 0)
-			titleText$ = replace_regex$(titleText$, "_", " ", 0)
-		else
-			titleText$ = enteredTitle$
-		endif
-
-		# Calculate values
-		selectObject: .soundFile
-		totalDuration = Get total duration
-		if phonetogram
-			.pp = To PointProcess (periodic, cc): 60, 600
-			.textgrid = To TextGrid (vuv): 0.02, 0.01
-			@pitch_dynamic_range: .soundFile, .textgrid, scale$
-			selectObject: .pp
-			Remove
-		else
-			@syllable_nuclei: .soundFile
-			.textgrid = syllable_nuclei.textgridid
-			@pitch_dynamic_range: .soundFile, .textgrid, scale$
-		endif
+			# Write title
+			Helvetica
+			Text special: (leftAxis+rightAxis)/2, "Centre", topAxis+0.5, "Bottom", "Helvetica", 24, "0", titleText$	
 		
-		# Get title
-		.titleVar$ = uiMessage$ [uiLanguage$, "Title"]
-		.titleVar$ = replace_regex$(.titleVar$, "^([A-Z])", "\l\1", 0)
-		beginPause: "Select a title"
-			sentence: uiMessage$ [uiLanguage$, "Title"], titleText$
-			comment: "Axes"
-			real: uiMessage$ [uiLanguage$, "Left"], left
-			real: uiMessage$ [uiLanguage$, "Right"], right
-			real: uiMessage$ [uiLanguage$, "Bottom"], bottom
-			real: uiMessage$ [uiLanguage$, "Top"], top
-		.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1	
-		if .clicked = 1
-			.continue = 0
-			.message$ = uiMessage$ [uiLanguage$, "Nothing to do"]
-			exitScript: .message$
-		endif
-		if '.titleVar$'$ = ""
-			enteredTitle$ = uiMessage$ [uiLanguage$, "untitled"]
-		elsif '.titleVar$'$ != uiMessage$ [uiLanguage$, "untitled"] and index_regex('.titleVar$'$, "[^\s]")
-			if titleText$ <> '.titleVar$'$
-				enteredTitle$ = '.titleVar$'$
+			# Save graphics
+			.file$ = chooseWriteFile$: pai.uiMessage$ [uiLanguage$, "SavePicture"], titleText$+"_PitchDynamic.png"
+			if .file$ <> ""
+				Select outer viewport: 0, 9, 0, 9
+				Save as 300-dpi PNG file: .file$
 			endif
-			titleText$ = '.titleVar$'$
-		endif
-		.resetAxis = 1
-		if left != 0
-			leftAxis = left
-			.resetAxis = 0
-		endif
-		if right != 0
-			rightAxis = right
-			.resetAxis = 0
-		endif
-		if bottom != 0
-			bottomAxis = bottom
-			.resetAxis = 0
-		endif
-		if top != 0
-			topAxis = top
-			.resetAxis = 0
-		endif
-		
-		# Plot
-		.horizontal$ = """"+scale$+""", 'leftAxis', 'rightAxis'"
-		.vertical$ = """Intensity (dB)"", 'bottomAxis', 'topAxis'"
-		@plot_Pitch_Int_table: pitch_dynamic_range.table, .horizontal$, .vertical$, "\bu", 2, first, .resetAxis, phonetogram
-		
-		# Print info
-		# "Mean Int;SD Int;Mean 'scale$';SD 'scale$';Slope;Rsqr;N;Outliers;Area;Duration;Title"
-		appendInfoLine: fixed$(plot_Pitch_Int_table.meanInt, precission+1), ";", fixed$(plot_Pitch_Int_table.sdInt, precission+1), ";", fixed$(plot_Pitch_Int_table.meanF0, precission+1), ";", fixed$(plot_Pitch_Int_table.sdF0, precission+1), ";", fixed$(plot_Pitch_Int_table.slope, precission+3), ";", fixed$(plot_Pitch_Int_table.r, precission+2), ";", fixed$(plot_Pitch_Int_table.area, precission), ";", plot_Pitch_Int_table.nrows, ";", plot_Pitch_Int_table.removed, ";", fixed$(totalDuration, precission), ";", titleText$
-	
-		# Write title
-		Helvetica
-		Text special: (leftAxis+rightAxis)/2, "Centre", topAxis+0.5, "Bottom", "Helvetica", 24, "0", titleText$	
-	
-		# Save graphics
-		.file$ = chooseWriteFile$: uiMessage$ [uiLanguage$, "SavePicture"], titleText$+"_PitchDynamic.png"
-		if .file$ <> ""
-			Select outer viewport: 0, 9, 0, 9
-			Save as 300-dpi PNG file: .file$
-		endif
 
-		# Clean up
-		selectObject: .soundFile, .textgrid, pitch_dynamic_range.table
-		Remove
+			# Clean up
+			selectObject: .soundFile, .textgrid, pitch_dynamic_range.table
+			Remove
+				
+			# Ready or not?
+			beginPause: pai.uiMessage$ [uiLanguage$, "DoContinue"]
+				comment: pai.uiMessage$ [uiLanguage$, "CommentContinue"]
+			.clicked = endPause: (pai.uiMessage$ [uiLanguage$, "Done"]), (pai.uiMessage$ [uiLanguage$, "Continue"]), 2, 2
+			if .clicked = 1
+				.continue = 0
+			else 
+				.continue = 1
+			endif
 			
-		# Ready or not?
-		beginPause: uiMessage$ [uiLanguage$, "DoContinue"]
-			comment: uiMessage$ [uiLanguage$, "CommentContinue"]
-		.clicked = endPause: (uiMessage$ [uiLanguage$, "Continue"]), (uiMessage$ [uiLanguage$, "Done"]), 2, 2
-		.continue = (.clicked = 1)
-		label NEXTROUND
-	endwhile
+			label NEXTROUNDPAIR
+		endwhile
+		
+	endif
 	
-endif
+	label LASTROUNDPAIR
+
+endproc
+
+#############################################
+#
+# Procedure definitions
+# 
+#############################################
 
 procedure pitch_dynamic_range .sound .textgrid .scale$
 	selectObject: .sound
@@ -402,7 +431,7 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	# Set up new canvas
 	if .first
 		Erase all
-		call set_up_Canvas
+		call set_up_Canvas_PAIR
 		.garnish$ = "yes"
 	endif
 	.top = topAxis
@@ -663,7 +692,7 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	Draw line: .xLow.minor, .yLow.minor, .xHigh.minor, .yHigh.minor
 	Solid line
 	Black
-	Text special: leftAxis, "Left", bottomAxis+1.6, "Bottom", "Helvetica", 12, "0", uiMessage$ [uiLanguage$, "Duration"]+": "+fixed$(totalDuration, precission)+" s"
+	Text special: leftAxis, "Left", bottomAxis+1.6, "Bottom", "Helvetica", 12, "0", pai.uiMessage$ [uiLanguage$, "Duration"]+": "+fixed$(totalDuration, precission)+" s"
 	Text special: leftAxis, "Left", bottomAxis+0.8, "Bottom", "Helvetica", 12, "0", "N: '.nrows'"
 	Text special: leftAxis, "Left", bottomAxis, "Bottom", "Helvetica", 12, "0", "\# Outliers: '.removed' (3 SD)"
 	
@@ -675,8 +704,8 @@ procedure plot_Pitch_Int_table .table .horizontal$ .vertical$ .mark$ .marksize, 
 	Black
 	
 	Text special: rightAxis, "Right", bottomAxis+1.6, "Bottom", "Helvetica", 10, "0", "R: "+fixed$(.r, 3)+" "
-	Text special: rightAxis, "Right", bottomAxis+0.8, "Bottom", "Helvetica", 10, "0", uiMessage$ [uiLanguage$, "SlopeTitle"]+": "+fixed$(.slope, precission+1)+" dB/"+.scale$+" "
-	Text special: rightAxis, "Right", bottomAxis, "Bottom", "Helvetica", 10, "0", uiMessage$ [uiLanguage$, "AreaTitle"]+" (2 SD): "+fixed$(.area, precission)+" "+.scale$+"\.cdB"+" "
+	Text special: rightAxis, "Right", bottomAxis+0.8, "Bottom", "Helvetica", 10, "0", pai.uiMessage$ [uiLanguage$, "SlopeTitle"]+": "+fixed$(.slope, precission+1)+" dB/"+.scale$+" "
+	Text special: rightAxis, "Right", bottomAxis, "Bottom", "Helvetica", 10, "0", pai.uiMessage$ [uiLanguage$, "AreaTitle"]+" (2 SD): "+fixed$(.area, precission)+" "+.scale$+"\.cdB"+" "
 	
 	selectObject: .cleanTable
 	Remove
@@ -723,7 +752,7 @@ endproc
 
 
 # Set up Canvas
-procedure set_up_Canvas
+procedure set_up_Canvas_PAIR
 	Select outer viewport: 0, 9, 0, 9
 	Select inner viewport: 1, 8, 1, 8
 	Axes: leftAxis, rightAxis, bottomAxis, topAxis
@@ -799,29 +828,29 @@ procedure set_axes .scale$ .lowPitch .highPitch .phonetogram
 		if .highBoundary >= .highPitch or .lowBoundary >= .lowPitch
 			leftAxis = .lowBoundary
 			rightAxis = .highBoundary
-			goto LAST
+			goto LASTPAIR
 		endif
 		
 		.lowBoundary += .step
 	endwhile
-	label LAST
+	label LASTPAIR
 endproc
 
 
-procedure read_and_select_audio .type .message1$ .message2$
+procedure read_and_select_audioPaIR .type .message1$ .message2$
 	.sound = -1
 	if .type
 		Record mono Sound...
-		beginPause: (uiMessage$ [uiLanguage$, "PauseRecord"])
-			comment: uiMessage$ [uiLanguage$, "CommentList"]
-		.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
+		beginPause: (pai.uiMessage$ [uiLanguage$, "PauseRecord"])
+			comment: pai.uiMessage$ [uiLanguage$, "CommentList"]
+		.clicked = endPause: (pai.uiMessage$ [uiLanguage$, "Stop"]), (pai.uiMessage$ [uiLanguage$, "Continue"]), 2, 1
 		if .clicked = 1
 			@pauseScriptLanguage: "Stopped", ""
-			goto RETURN
+			goto LASTROUNDPAIR
 		endif
 		if numberOfSelected("Sound") <= 0
 			@pauseScriptLanguage: "ErrorSound", ""
-			goto RETURN
+			goto LASTROUNDPAIR
 		endif
 		.source = selected ("Sound")
 		.filename$ = "Recorded speech"
@@ -834,7 +863,7 @@ procedure read_and_select_audio .type .message1$ .message2$
 
 		if .filename$ = "" or not fileReadable(.filename$) or not index_regex(.filename$, "(?i\.(wav|mp3|flac|aif[fc]|snd|next|nist))")
 			@pauseScriptLanguage: "No readable recording selected ", .filename$
-			goto RETURN
+			goto LASTROUNDPAIR
 		endif
 		.source = Open long sound file: .filename$
 		.filename$ = selected$("LongSound")
@@ -842,7 +871,7 @@ procedure read_and_select_audio .type .message1$ .message2$
 		.fileType$ = extractWord$ (.fullName$, "")
 		if .fileType$ <> "Sound" and .fileType$ <> "LongSound"
 			@pauseScriptLanguage:  "ErrorSound", " "+.filename$
-			goto RETURN
+			goto LASTROUNDPAIR
 		endif
 	endif
 
@@ -863,15 +892,15 @@ procedure read_and_select_audio .type .message1$ .message2$
 		Text special: 0, "left", 0.5, "half", "Helvetica", 16, "0", .message2$
 		Black
 		beginPause: .message2$
-			comment: (uiMessage$ [uiLanguage$, "SelectSound1"])
-			comment: (uiMessage$ [uiLanguage$, "SelectSound2"])
-			comment: (uiMessage$ [uiLanguage$, "SelectSound3"])
-		.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
+			comment: (pai.uiMessage$ [uiLanguage$, "SelectSound1"])
+			comment: (pai.uiMessage$ [uiLanguage$, "SelectSound2"])
+			comment: (pai.uiMessage$ [uiLanguage$, "SelectSound3"])
+		.clicked = endPause: (pai.uiMessage$ [uiLanguage$, "Stop"]), (pai.uiMessage$ [uiLanguage$, "Continue"]), 2, 1
 		if .clicked = 1
 			selectObject: .source
 			Remove
 			@pauseScriptLanguage: "Stopped", ""
-			goto RETURN
+			goto LASTROUNDPAIR
 		endif
 		
 		editor: .source
@@ -923,7 +952,7 @@ procedure read_and_select_audio .type .message1$ .message2$
 		Scale intensity: 70
 	endif
 
-	label RETURN
+	label RETURNPAIR
 endproc
 
 procedure calculate_ellipse .table
@@ -991,429 +1020,429 @@ endproc
 procedure intialize_UI_messages
 
 # English
-uiMessage$ ["EN", "PauseRecord"] = "Record continuous speech"
-uiMessage$ ["EN", "Record1"] = "Record the ##continuous speech#"
-uiMessage$ ["EN", "Record2"] = "Please be ready to start"
-uiMessage$ ["EN", "Record3"] = "Select the speech you want to analyse"
-uiMessage$ ["EN", "Open1"] = "Open the recording containing the speech"
-uiMessage$ ["EN", "Open2"] = "Select the speech you want to analyse"
-uiMessage$ ["EN", "Corneri"] = "h##ea#t"
-uiMessage$ ["EN", "Corneru"] = "h##oo#t"
-uiMessage$ ["EN", "Cornera"] = "h##a#t"
-uiMessage$ ["EN", "SlopeTitle"] = "Slope"
-uiMessage$ ["EN", "AreaTitle"] = "Area"
-uiMessage$ ["EN", "Area1"] = "1"
-uiMessage$ ["EN", "Area2"] = "2"
-uiMessage$ ["EN", "AreaN"] = "N"
-uiMessage$ ["EN", "Duration"] = "Duration"
-uiMessage$ ["EN", "VTL"] = "Vocal tract"
+pai.uiMessage$ ["EN", "PauseRecord"] = "Record continuous speech"
+pai.uiMessage$ ["EN", "Record1"] = "Record the ##continuous speech#"
+pai.uiMessage$ ["EN", "Record2"] = "Please be ready to start"
+pai.uiMessage$ ["EN", "Record3"] = "Select the speech you want to analyse"
+pai.uiMessage$ ["EN", "Open1"] = "Open the recording containing the speech"
+pai.uiMessage$ ["EN", "Open2"] = "Select the speech you want to analyse"
+pai.uiMessage$ ["EN", "Corneri"] = "h##ea#t"
+pai.uiMessage$ ["EN", "Corneru"] = "h##oo#t"
+pai.uiMessage$ ["EN", "Cornera"] = "h##a#t"
+pai.uiMessage$ ["EN", "SlopeTitle"] = "Slope"
+pai.uiMessage$ ["EN", "AreaTitle"] = "Area"
+pai.uiMessage$ ["EN", "Area1"] = "1"
+pai.uiMessage$ ["EN", "Area2"] = "2"
+pai.uiMessage$ ["EN", "AreaN"] = "N"
+pai.uiMessage$ ["EN", "Duration"] = "Duration"
+pai.uiMessage$ ["EN", "VTL"] = "Vocal tract"
 
-uiMessage$ ["EN", "LogFile"] = "Write log to table (""-"" write to the info window)"
-uiMessage$ ["EN", "CommentContinue"] = "Click on ""Continue"" if you want to analyze more speech samples"
-uiMessage$ ["EN", "CommentOpen"] = "Click on ""Open"" and select a recording"
-uiMessage$ ["EN", "CommentRecord"] = "Click on ""Record"" and start speaking"
-uiMessage$ ["EN", "CommentList"] = "Record sound, ""Save to list & Close"", then click ""Continue"""
-uiMessage$ ["EN", "SavePicture"] = "Save picture"
-uiMessage$ ["EN", "DoContinue"] = "Do you want to continue?"
-uiMessage$ ["EN", "SelectSound1"] = "Select the sound and continue"
-uiMessage$ ["EN", "SelectSound2"] = "It is possible to remove unwanted sounds from the selection"
-uiMessage$ ["EN", "SelectSound3"] = "Select the unwanted part and then choose ""Cut"" from the ""Edit"" menu"
-uiMessage$ ["EN", "Stopped"] = "Vowel Triangle stopped"
-uiMessage$ ["EN", "ErrorSound"] = "Error: Not a sound "
-uiMessage$ ["EN", "Nothing to do"] = "Nothing to do"
-uiMessage$ ["EN", "No readable recording selected "] = "No readable recording selected "
+pai.uiMessage$ ["EN", "LogFile"] = "Write log to table (""-"" write to the info window)"
+pai.uiMessage$ ["EN", "CommentContinue"] = "Click on ""Continue"" if you want to analyze more speech samples"
+pai.uiMessage$ ["EN", "CommentOpen"] = "Click on ""Open"" and select a recording"
+pai.uiMessage$ ["EN", "CommentRecord"] = "Click on ""Record"" and start speaking"
+pai.uiMessage$ ["EN", "CommentList"] = "Record sound, ""Save to list & Close"", then click ""Continue"""
+pai.uiMessage$ ["EN", "SavePicture"] = "Save picture"
+pai.uiMessage$ ["EN", "DoContinue"] = "Do you want to continue?"
+pai.uiMessage$ ["EN", "SelectSound1"] = "Select the sound and continue"
+pai.uiMessage$ ["EN", "SelectSound2"] = "It is possible to remove unwanted sounds from the selection"
+pai.uiMessage$ ["EN", "SelectSound3"] = "Select the unwanted part and then choose ""Cut"" from the ""Edit"" menu"
+pai.uiMessage$ ["EN", "Stopped"] = "Vowel Triangle stopped"
+pai.uiMessage$ ["EN", "ErrorSound"] = "Error: Not a sound "
+pai.uiMessage$ ["EN", "Nothing to do"] = "Nothing to do"
+pai.uiMessage$ ["EN", "No readable recording selected "] = "No readable recording selected "
 
-uiMessage$ ["EN", "Interface Language"] = "Language"
-uiMessage$ ["EN", "Speaker is a"] = "Speaker is a"
-uiMessage$ ["EN", "Male"] = "Male ♂"
-uiMessage$ ["EN", "Female"] = "Female ♀"
-uiMessage$ ["EN", "Automatic"] = "Automatic"
-uiMessage$ ["EN", "Experimental"] = "Experimental: Select formant tracking method"
-uiMessage$ ["EN", "Continue"] = "Continue"
-uiMessage$ ["EN", "Done"] = "Done"
-uiMessage$ ["EN", "Stop"] = "Stop"
-uiMessage$ ["EN", "Open"] = "Open"
-uiMessage$ ["EN", "Record"] = "Record"
-uiMessage$ ["EN", "untitled"] = "untitled"
-uiMessage$ ["EN", "Title"] 			= "Title"
+pai.uiMessage$ ["EN", "Interface Language"] = "Language"
+pai.uiMessage$ ["EN", "Speaker is a"] = "Speaker is a"
+pai.uiMessage$ ["EN", "Male"] = "Male ♂"
+pai.uiMessage$ ["EN", "Female"] = "Female ♀"
+pai.uiMessage$ ["EN", "Automatic"] = "Automatic"
+pai.uiMessage$ ["EN", "Experimental"] = "Experimental: Select formant tracking method"
+pai.uiMessage$ ["EN", "Continue"] = "Continue"
+pai.uiMessage$ ["EN", "Done"] = "Done"
+pai.uiMessage$ ["EN", "Stop"] = "Stop"
+pai.uiMessage$ ["EN", "Open"] = "Open"
+pai.uiMessage$ ["EN", "Record"] = "Record"
+pai.uiMessage$ ["EN", "untitled"] = "untitled"
+pai.uiMessage$ ["EN", "Title"] 			= "Title"
 
-uiMessage$ ["EN", "Left"] 			= "Left"
-uiMessage$ ["EN", "Right"] 			= "Right"
-uiMessage$ ["EN", "Top"] 			= "Top"
-uiMessage$ ["EN", "Bottom"] 		= "Bottom"
-uiMessage$ ["EN", "Axes"] 			= "Axes"
+pai.uiMessage$ ["EN", "Left"] 			= "Left"
+pai.uiMessage$ ["EN", "Right"] 			= "Right"
+pai.uiMessage$ ["EN", "Top"] 			= "Top"
+pai.uiMessage$ ["EN", "Bottom"] 		= "Bottom"
+pai.uiMessage$ ["EN", "Axes"] 			= "Axes"
 
 # Dutch
-uiMessage$ ["NL", "PauseRecord"] 	= "Neem lopende spraak op"
-uiMessage$ ["NL", "Record1"] 		= "Neem de ##lopende spraak# op"
-uiMessage$ ["NL", "Record2"] 		= "Zorg dat u klaar ben om te spreken"
-uiMessage$ ["NL", "Record3"] 		= "Selecteer de spraak die u wilt analyseren"
-uiMessage$ ["NL", "Open1"] 			= "Open de spraakopname"
-uiMessage$ ["NL", "Open2"] 			= "Selecteer de spraak die u wilt analyseren"
-uiMessage$ ["NL", "Corneri"] 		= "h##ie#t"
-uiMessage$ ["NL", "Corneru"] 		= "h##oe#d"
-uiMessage$ ["NL", "Cornera"] 		= "h##aa#t"
-uiMessage$ ["NL", "SlopeTitle"] 	= "Helling"
-uiMessage$ ["NL", "AreaTitle"] 		= "Oppervlak"
-uiMessage$ ["NL", "Area1"] 			= "1"
-uiMessage$ ["NL", "Area2"] 			= "2"
-uiMessage$ ["NL", "AreaN"] 			= "N"
-uiMessage$ ["NL", "Duration"] 		= "Duur"
-uiMessage$ ["NL", "VTL"] 			= "Spraakkanaal"
+pai.uiMessage$ ["NL", "PauseRecord"] 	= "Neem lopende spraak op"
+pai.uiMessage$ ["NL", "Record1"] 		= "Neem de ##lopende spraak# op"
+pai.uiMessage$ ["NL", "Record2"] 		= "Zorg dat u klaar ben om te spreken"
+pai.uiMessage$ ["NL", "Record3"] 		= "Selecteer de spraak die u wilt analyseren"
+pai.uiMessage$ ["NL", "Open1"] 			= "Open de spraakopname"
+pai.uiMessage$ ["NL", "Open2"] 			= "Selecteer de spraak die u wilt analyseren"
+pai.uiMessage$ ["NL", "Corneri"] 		= "h##ie#t"
+pai.uiMessage$ ["NL", "Corneru"] 		= "h##oe#d"
+pai.uiMessage$ ["NL", "Cornera"] 		= "h##aa#t"
+pai.uiMessage$ ["NL", "SlopeTitle"] 	= "Helling"
+pai.uiMessage$ ["NL", "AreaTitle"] 		= "Oppervlak"
+pai.uiMessage$ ["NL", "Area1"] 			= "1"
+pai.uiMessage$ ["NL", "Area2"] 			= "2"
+pai.uiMessage$ ["NL", "AreaN"] 			= "N"
+pai.uiMessage$ ["NL", "Duration"] 		= "Duur"
+pai.uiMessage$ ["NL", "VTL"] 			= "Spraakkanaal"
 
-uiMessage$ ["NL", "LogFile"] 		= "Schrijf resultaten naar log bestand (""-"" schrijft naar info venster)"
-uiMessage$ ["NL", "CommentContinue"] = "Klik op ""Doorgaan"" als u meer spraakopnamen wilt analyseren"
-uiMessage$ ["NL", "CommentOpen"] 	= "Klik op ""Open"" en selecteer een opname"
-uiMessage$ ["NL", "CommentRecord"] 	= "Klik op ""Opnemen"" en start met spreken"
-uiMessage$ ["NL", "CommentList"] 	= "Spraak opnemen, ""Save to list & Close"", daarna klik op ""Doorgaan"""
-uiMessage$ ["NL", "SavePicture"] 	= "Bewaar afbeelding"
-uiMessage$ ["NL", "DoContinue"] 	= "Wilt u doorgaan?"
-uiMessage$ ["NL", "SelectSound1"] 	= "Selecteer het spraakfragment en ga door"
-uiMessage$ ["NL", "SelectSound2"] 	= "Het is mogelijk om ongewenste geluiden uit de opname te verwijderen"
-uiMessage$ ["NL", "SelectSound3"] 	= "Selecteer het ongewenste deel en kies ""Cut"" in het ""Edit"" menu"
-uiMessage$ ["NL", "Stopped"] 		= "Vowel Triangle is gestopt"
-uiMessage$ ["NL", "ErrorSound"] 	= "Fout: Dit is geen geluid "
-uiMessage$ ["NL", "Nothing to do"] 	= "Geen taken"
-uiMessage$ ["NL", "No readable recording selected "] = "Geen leesbare opname geselecteerd "
+pai.uiMessage$ ["NL", "LogFile"] 		= "Schrijf resultaten naar log bestand (""-"" schrijft naar info venster)"
+pai.uiMessage$ ["NL", "CommentContinue"] = "Klik op ""Doorgaan"" als u meer spraakopnamen wilt analyseren"
+pai.uiMessage$ ["NL", "CommentOpen"] 	= "Klik op ""Open"" en selecteer een opname"
+pai.uiMessage$ ["NL", "CommentRecord"] 	= "Klik op ""Opnemen"" en start met spreken"
+pai.uiMessage$ ["NL", "CommentList"] 	= "Spraak opnemen, ""Save to list & Close"", daarna klik op ""Doorgaan"""
+pai.uiMessage$ ["NL", "SavePicture"] 	= "Bewaar afbeelding"
+pai.uiMessage$ ["NL", "DoContinue"] 	= "Wilt u doorgaan?"
+pai.uiMessage$ ["NL", "SelectSound1"] 	= "Selecteer het spraakfragment en ga door"
+pai.uiMessage$ ["NL", "SelectSound2"] 	= "Het is mogelijk om ongewenste geluiden uit de opname te verwijderen"
+pai.uiMessage$ ["NL", "SelectSound3"] 	= "Selecteer het ongewenste deel en kies ""Cut"" in het ""Edit"" menu"
+pai.uiMessage$ ["NL", "Stopped"] 		= "Vowel Triangle is gestopt"
+pai.uiMessage$ ["NL", "ErrorSound"] 	= "Fout: Dit is geen geluid "
+pai.uiMessage$ ["NL", "Nothing to do"] 	= "Geen taken"
+pai.uiMessage$ ["NL", "No readable recording selected "] = "Geen leesbare opname geselecteerd "
 
-uiMessage$ ["NL", "Interface Language"] = "Taal (Language)"
-uiMessage$ ["NL", "Speaker is a"] 	= "De Spreker is een"
-uiMessage$ ["NL", "Male"] 			= "Man ♂"
-uiMessage$ ["NL", "Female"] 		= "Vrouw ♀"
-uiMessage$ ["NL", "Automatic"] 		= "Automatisch"
-uiMessage$ ["NL", "Experimental"] 	= "Experimenteel: Kies methode om formanten te berekenen"
-uiMessage$ ["NL", "Continue"] 		= "Doorgaan"
-uiMessage$ ["NL", "Done"] 			= "Klaar"
-uiMessage$ ["NL", "Stop"] 			= "Stop"
-uiMessage$ ["NL", "Open"] 			= "Open"
-uiMessage$ ["NL", "Record"] 		= "Opnemen"
-uiMessage$ ["NL", "untitled"] 		= "zonder titel"
-uiMessage$ ["NL", "Title"] 			= "Titel"
+pai.uiMessage$ ["NL", "Interface Language"] = "Taal (Language)"
+pai.uiMessage$ ["NL", "Speaker is a"] 	= "De Spreker is een"
+pai.uiMessage$ ["NL", "Male"] 			= "Man ♂"
+pai.uiMessage$ ["NL", "Female"] 		= "Vrouw ♀"
+pai.uiMessage$ ["NL", "Automatic"] 		= "Automatisch"
+pai.uiMessage$ ["NL", "Experimental"] 	= "Experimenteel: Kies methode om formanten te berekenen"
+pai.uiMessage$ ["NL", "Continue"] 		= "Doorgaan"
+pai.uiMessage$ ["NL", "Done"] 			= "Klaar"
+pai.uiMessage$ ["NL", "Stop"] 			= "Stop"
+pai.uiMessage$ ["NL", "Open"] 			= "Open"
+pai.uiMessage$ ["NL", "Record"] 		= "Opnemen"
+pai.uiMessage$ ["NL", "untitled"] 		= "zonder titel"
+pai.uiMessage$ ["NL", "Title"] 			= "Titel"
 
-uiMessage$ ["NL", "Left"] 			= "Links"
-uiMessage$ ["NL", "Right"] 			= "Rechts"
-uiMessage$ ["NL", "Top"] 			= "Boven"
-uiMessage$ ["NL", "Bottom"] 		= "Onder"
-uiMessage$ ["NL", "Axes"] 			= "Assen"
+pai.uiMessage$ ["NL", "Left"] 			= "Links"
+pai.uiMessage$ ["NL", "Right"] 			= "Rechts"
+pai.uiMessage$ ["NL", "Top"] 			= "Boven"
+pai.uiMessage$ ["NL", "Bottom"] 		= "Onder"
+pai.uiMessage$ ["NL", "Axes"] 			= "Assen"
 
 # German
-uiMessage$ ["DE", "PauseRecord"] 	= "Zeichne laufende Sprache auf"
-uiMessage$ ["DE", "Record1"] 		= "Die ##laufende Sprache# aufzeichnen"
-uiMessage$ ["DE", "Record2"] 		= "Bitte seien Sie bereit zu sprechen"
-uiMessage$ ["DE", "Record3"] 		= "Wählen Sie die Sprachaufnahme, die Sie analysieren möchten"
-uiMessage$ ["DE", "Open1"] 			= "Öffnen Sie die Sprachaufnahme"
-uiMessage$ ["DE", "Open2"] 			= "Wählen Sie die Sprachaufnahme, die Sie analysieren möchten"
-uiMessage$ ["DE", "Corneri"] 		= "L##ie#d"
-uiMessage$ ["DE", "Corneru"] 		= "H##u#t"
-uiMessage$ ["DE", "Cornera"] 		= "T##a#l"
-uiMessage$ ["DE", "SlopeTitle"] 	= "Steigung"
-uiMessage$ ["DE", "AreaTitle"] 		= "Oberfläche"
-uiMessage$ ["DE", "Area1"] 			= "1"
-uiMessage$ ["DE", "Area2"] 			= "2"
-uiMessage$ ["DE", "AreaN"] 			= "N"
-uiMessage$ ["DE", "Duration"] 		= "Dauer"
-uiMessage$ ["DE", "VTL"] 			= "Vokaltrakt"
+pai.uiMessage$ ["DE", "PauseRecord"] 	= "Zeichne laufende Sprache auf"
+pai.uiMessage$ ["DE", "Record1"] 		= "Die ##laufende Sprache# aufzeichnen"
+pai.uiMessage$ ["DE", "Record2"] 		= "Bitte seien Sie bereit zu sprechen"
+pai.uiMessage$ ["DE", "Record3"] 		= "Wählen Sie die Sprachaufnahme, die Sie analysieren möchten"
+pai.uiMessage$ ["DE", "Open1"] 			= "Öffnen Sie die Sprachaufnahme"
+pai.uiMessage$ ["DE", "Open2"] 			= "Wählen Sie die Sprachaufnahme, die Sie analysieren möchten"
+pai.uiMessage$ ["DE", "Corneri"] 		= "L##ie#d"
+pai.uiMessage$ ["DE", "Corneru"] 		= "H##u#t"
+pai.uiMessage$ ["DE", "Cornera"] 		= "T##a#l"
+pai.uiMessage$ ["DE", "SlopeTitle"] 	= "Steigung"
+pai.uiMessage$ ["DE", "AreaTitle"] 		= "Oberfläche"
+pai.uiMessage$ ["DE", "Area1"] 			= "1"
+pai.uiMessage$ ["DE", "Area2"] 			= "2"
+pai.uiMessage$ ["DE", "AreaN"] 			= "N"
+pai.uiMessage$ ["DE", "Duration"] 		= "Dauer"
+pai.uiMessage$ ["DE", "VTL"] 			= "Vokaltrakt"
                                      
-uiMessage$ ["DE", "LogFile"] 		= "Daten in Tabelle schreiben (""-"" in das Informationsfenster schreiben)"
-uiMessage$ ["DE", "CommentContinue"]= "Klicken Sie auf ""Weiter"", wenn Sie mehr Sprachproben analysieren möchten"
-uiMessage$ ["DE", "CommentOpen"] 	= "Klicke auf ""Öffnen"" und wähle eine Aufnahme"
-uiMessage$ ["DE", "CommentRecord"] 	= "Klicke auf ""Aufzeichnen"" und sprich"
-uiMessage$ ["DE", "CommentList"] 	= "Sprache aufnehmen, ""Save to list & Close"", dann klicken Sie auf ""Weitergehen"""
-uiMessage$ ["DE", "SavePicture"] 	= "Bild speichern"
-uiMessage$ ["DE", "DoContinue"] 	= "Möchten Sie weitergehen?"
-uiMessage$ ["DE", "SelectSound1"] 	= "Wählen Sie den Aufnahmebereich und gehen Sie weiter"
-uiMessage$ ["DE", "SelectSound2"] 	= "Es ist möglich, unerwünschte Geräusche aus der Auswahl zu entfernen"
-uiMessage$ ["DE", "SelectSound3"] 	= "Wählen Sie den unerwünschten Teil und wählen Sie dann ""Cut"" aus dem ""Edit"" Menü"
-uiMessage$ ["DE", "Stopped"] 		= "Pitch_and_Intensity_ranges ist gestoppt"
-uiMessage$ ["DE", "ErrorSound"] 	= "Fehler: Keine Sprache gefunden"
-uiMessage$ ["DE", "Nothing to do"] 	= "Keine Aufgaben"
-uiMessage$ ["DE", "No readable recording selected "] = "Keine verwertbare Aufnahme ausgewählt "
+pai.uiMessage$ ["DE", "LogFile"] 		= "Daten in Tabelle schreiben (""-"" in das Informationsfenster schreiben)"
+pai.uiMessage$ ["DE", "CommentContinue"]= "Klicken Sie auf ""Weiter"", wenn Sie mehr Sprachproben analysieren möchten"
+pai.uiMessage$ ["DE", "CommentOpen"] 	= "Klicke auf ""Öffnen"" und wähle eine Aufnahme"
+pai.uiMessage$ ["DE", "CommentRecord"] 	= "Klicke auf ""Aufzeichnen"" und sprich"
+pai.uiMessage$ ["DE", "CommentList"] 	= "Sprache aufnehmen, ""Save to list & Close"", dann klicken Sie auf ""Weitergehen"""
+pai.uiMessage$ ["DE", "SavePicture"] 	= "Bild speichern"
+pai.uiMessage$ ["DE", "DoContinue"] 	= "Möchten Sie weitergehen?"
+pai.uiMessage$ ["DE", "SelectSound1"] 	= "Wählen Sie den Aufnahmebereich und gehen Sie weiter"
+pai.uiMessage$ ["DE", "SelectSound2"] 	= "Es ist möglich, unerwünschte Geräusche aus der Auswahl zu entfernen"
+pai.uiMessage$ ["DE", "SelectSound3"] 	= "Wählen Sie den unerwünschten Teil und wählen Sie dann ""Cut"" aus dem ""Edit"" Menü"
+pai.uiMessage$ ["DE", "Stopped"] 		= "Pitch_and_Intensity_ranges ist gestoppt"
+pai.uiMessage$ ["DE", "ErrorSound"] 	= "Fehler: Keine Sprache gefunden"
+pai.uiMessage$ ["DE", "Nothing to do"] 	= "Keine Aufgaben"
+pai.uiMessage$ ["DE", "No readable recording selected "] = "Keine verwertbare Aufnahme ausgewählt "
                
-uiMessage$ ["DE", "Interface Language"] = "Sprache (Language)"
-uiMessage$ ["DE", "Speaker is a"] 	= "Der Sprecher ist ein(e)"
-uiMessage$ ["DE", "Male"] 			= "Man ♂"
-uiMessage$ ["DE", "Female"] 		= "Frau ♀"
-uiMessage$ ["DE", "Automatic"] 		= "Selbstauswahl"
-uiMessage$ ["DE", "Experimental"] 	= "Experimentell: Wählen Sie die Formant-Berechnungsmethode"
-uiMessage$ ["DE", "Continue"] 		= "Weitergehen"
-uiMessage$ ["DE", "Done"] 			= "Fertig"
-uiMessage$ ["DE", "Stop"] 			= "Halt"
-uiMessage$ ["DE", "Open"] 			= "Öffnen"
-uiMessage$ ["DE", "Record"] 		= "Aufzeichnen"
-uiMessage$ ["DE", "untitled"] 		= "ohne Titel"
-uiMessage$ ["DE", "Title"] 			= "Titel"
+pai.uiMessage$ ["DE", "Interface Language"] = "Sprache (Language)"
+pai.uiMessage$ ["DE", "Speaker is a"] 	= "Der Sprecher ist ein(e)"
+pai.uiMessage$ ["DE", "Male"] 			= "Man ♂"
+pai.uiMessage$ ["DE", "Female"] 		= "Frau ♀"
+pai.uiMessage$ ["DE", "Automatic"] 		= "Selbstauswahl"
+pai.uiMessage$ ["DE", "Experimental"] 	= "Experimentell: Wählen Sie die Formant-Berechnungsmethode"
+pai.uiMessage$ ["DE", "Continue"] 		= "Weitergehen"
+pai.uiMessage$ ["DE", "Done"] 			= "Fertig"
+pai.uiMessage$ ["DE", "Stop"] 			= "Halt"
+pai.uiMessage$ ["DE", "Open"] 			= "Öffnen"
+pai.uiMessage$ ["DE", "Record"] 		= "Aufzeichnen"
+pai.uiMessage$ ["DE", "untitled"] 		= "ohne Titel"
+pai.uiMessage$ ["DE", "Title"] 			= "Titel"
 
-uiMessage$ ["DE", "Left"] 			= "Links"
-uiMessage$ ["DE", "Right"] 			= "Rechts"
-uiMessage$ ["DE", "Top"] 			= "Oben"
-uiMessage$ ["DE", "Bottom"] 		= "Unten"
-uiMessage$ ["DE", "Axes"] 			= "Axes"
+pai.uiMessage$ ["DE", "Left"] 			= "Links"
+pai.uiMessage$ ["DE", "Right"] 			= "Rechts"
+pai.uiMessage$ ["DE", "Top"] 			= "Oben"
+pai.uiMessage$ ["DE", "Bottom"] 		= "Unten"
+pai.uiMessage$ ["DE", "Axes"] 			= "Axes"
 
 # French
-uiMessage$ ["FR", "PauseRecord"]	= "Enregistrer un discours continu"
-uiMessage$ ["FR", "Record1"]		= "Enregistrer le ##discours continu#"
-uiMessage$ ["FR", "Record2"]		= "S'il vous plaît soyez prêt à commencer"
-uiMessage$ ["FR", "Record3"]		= "Sélectionnez le discours que vous voulez analyser"
-uiMessage$ ["FR", "Open1"]			= "Ouvrir l'enregistrement contenant le discours"
-uiMessage$ ["FR", "Open2"]			= "Sélectionnez le discours que vous voulez analyser"
-uiMessage$ ["FR", "Corneri"]		= "s##i#"
-uiMessage$ ["FR", "Corneru"]		= "f##ou#"
-uiMessage$ ["FR", "Cornera"]		= "l##à#"
-uiMessage$ ["FR", "SlopeTitle"]		= "Pente"
-uiMessage$ ["FR", "AreaTitle"]		= "Surface"
-uiMessage$ ["FR", "Area1"]			= "1"
-uiMessage$ ["FR", "Area2"]			= "2"
-uiMessage$ ["FR", "AreaN"]			= "N"
-uiMessage$ ["FR", "Duration"] 		= "Dur\e'e"
-uiMessage$ ["FR", "VTL"] 			= "Conduit vocal"
+pai.uiMessage$ ["FR", "PauseRecord"]	= "Enregistrer un discours continu"
+pai.uiMessage$ ["FR", "Record1"]		= "Enregistrer le ##discours continu#"
+pai.uiMessage$ ["FR", "Record2"]		= "S'il vous plaît soyez prêt à commencer"
+pai.uiMessage$ ["FR", "Record3"]		= "Sélectionnez le discours que vous voulez analyser"
+pai.uiMessage$ ["FR", "Open1"]			= "Ouvrir l'enregistrement contenant le discours"
+pai.uiMessage$ ["FR", "Open2"]			= "Sélectionnez le discours que vous voulez analyser"
+pai.uiMessage$ ["FR", "Corneri"]		= "s##i#"
+pai.uiMessage$ ["FR", "Corneru"]		= "f##ou#"
+pai.uiMessage$ ["FR", "Cornera"]		= "l##à#"
+pai.uiMessage$ ["FR", "SlopeTitle"]		= "Pente"
+pai.uiMessage$ ["FR", "AreaTitle"]		= "Surface"
+pai.uiMessage$ ["FR", "Area1"]			= "1"
+pai.uiMessage$ ["FR", "Area2"]			= "2"
+pai.uiMessage$ ["FR", "AreaN"]			= "N"
+pai.uiMessage$ ["FR", "Duration"] 		= "Dur\e'e"
+pai.uiMessage$ ["FR", "VTL"] 			= "Conduit vocal"
                                      
-uiMessage$ ["FR", "LogFile"]		= "Écrire un fichier journal dans une table (""-"" écrire dans la fenêtre d'information)"
-uiMessage$ ["FR", "CommentContinue"]= "Cliquez sur ""Continuer"" si vous voulez analyser plus d'échantillons de discours"
-uiMessage$ ["FR", "CommentOpen"]	= "Cliquez sur ""Ouvrir"" et sélectionnez un enregistrement"
-uiMessage$ ["FR", "CommentRecord"]	= "Cliquez sur ""Enregistrer"" et commencez à parler"
-uiMessage$ ["FR", "CommentList"]	= "Enregistrer le son, ""Save to list & Close"", puis cliquez sur ""Continuer"""
-uiMessage$ ["FR", "SavePicture"]	= "Enregistrer l'image"
-uiMessage$ ["FR", "DoContinue"]		= "Voulez-vous continuer?"
-uiMessage$ ["FR", "SelectSound1"]	= "Sélectionnez le son et continuez"
-uiMessage$ ["FR", "SelectSound2"]	= "Il est possible de supprimer les sons indésirables de la sélection"
-uiMessage$ ["FR", "SelectSound3"]	= "Sélectionnez la partie indésirable, puis choisissez ""Cut"" dans le menu ""Edit"""
-uiMessage$ ["FR", "Stopped"]		= "Pitch_and_Intensity_ranges s'est arrêté"
-uiMessage$ ["FR", "ErrorSound"]		= "Erreur: pas du son"
-uiMessage$ ["FR", "Nothing to do"] 	= "Rien à faire"
-uiMessage$ ["FR", "No readable recording selected "] = "Aucun enregistrement utilisable sélectionné "
+pai.uiMessage$ ["FR", "LogFile"]		= "Écrire un fichier journal dans une table (""-"" écrire dans la fenêtre d'information)"
+pai.uiMessage$ ["FR", "CommentContinue"]= "Cliquez sur ""Continuer"" si vous voulez analyser plus d'échantillons de discours"
+pai.uiMessage$ ["FR", "CommentOpen"]	= "Cliquez sur ""Ouvrir"" et sélectionnez un enregistrement"
+pai.uiMessage$ ["FR", "CommentRecord"]	= "Cliquez sur ""Enregistrer"" et commencez à parler"
+pai.uiMessage$ ["FR", "CommentList"]	= "Enregistrer le son, ""Save to list & Close"", puis cliquez sur ""Continuer"""
+pai.uiMessage$ ["FR", "SavePicture"]	= "Enregistrer l'image"
+pai.uiMessage$ ["FR", "DoContinue"]		= "Voulez-vous continuer?"
+pai.uiMessage$ ["FR", "SelectSound1"]	= "Sélectionnez le son et continuez"
+pai.uiMessage$ ["FR", "SelectSound2"]	= "Il est possible de supprimer les sons indésirables de la sélection"
+pai.uiMessage$ ["FR", "SelectSound3"]	= "Sélectionnez la partie indésirable, puis choisissez ""Cut"" dans le menu ""Edit"""
+pai.uiMessage$ ["FR", "Stopped"]		= "Pitch_and_Intensity_ranges s'est arrêté"
+pai.uiMessage$ ["FR", "ErrorSound"]		= "Erreur: pas du son"
+pai.uiMessage$ ["FR", "Nothing to do"] 	= "Rien à faire"
+pai.uiMessage$ ["FR", "No readable recording selected "] = "Aucun enregistrement utilisable sélectionné "
                   
-uiMessage$ ["FR", "Interface Language"] = "Langue (Language)"
-uiMessage$ ["FR", "Speaker is a"]	= "Le locuteur est un(e)"
-uiMessage$ ["FR", "Male"] 			= "Homme ♂"
-uiMessage$ ["FR", "Female"] 		= "Femme ♀"
-uiMessage$ ["FR", "Automatic"] 		= "Auto-sélection"
-uiMessage$ ["FR", "Experimental"] 	= "Expérimental: Sélectionner la méthode de calcul du formant"
-uiMessage$ ["FR", "Continue"]		= "Continuer"
-uiMessage$ ["FR", "Done"]			= "Terminé"
-uiMessage$ ["FR", "Stop"]			= "Arrêt"
-uiMessage$ ["FR", "Open"]			= "Ouvert"
-uiMessage$ ["FR", "Record"]			= "Enregistrer"
-uiMessage$ ["FR", "untitled"] 		= "sans titre"
-uiMessage$ ["FR", "Title"] 			= "Titre"
+pai.uiMessage$ ["FR", "Interface Language"] = "Langue (Language)"
+pai.uiMessage$ ["FR", "Speaker is a"]	= "Le locuteur est un(e)"
+pai.uiMessage$ ["FR", "Male"] 			= "Homme ♂"
+pai.uiMessage$ ["FR", "Female"] 		= "Femme ♀"
+pai.uiMessage$ ["FR", "Automatic"] 		= "Auto-sélection"
+pai.uiMessage$ ["FR", "Experimental"] 	= "Expérimental: Sélectionner la méthode de calcul du formant"
+pai.uiMessage$ ["FR", "Continue"]		= "Continuer"
+pai.uiMessage$ ["FR", "Done"]			= "Terminé"
+pai.uiMessage$ ["FR", "Stop"]			= "Arrêt"
+pai.uiMessage$ ["FR", "Open"]			= "Ouvert"
+pai.uiMessage$ ["FR", "Record"]			= "Enregistrer"
+pai.uiMessage$ ["FR", "untitled"] 		= "sans titre"
+pai.uiMessage$ ["FR", "Title"] 			= "Titre"
 
-uiMessage$ ["FR", "Left"] 			= "Gauche"
-uiMessage$ ["FR", "Right"] 			= "Droite"
-uiMessage$ ["FR", "Top"] 			= "Supérieur"
-uiMessage$ ["FR", "Bottom"] 		= "Inférieur"
-uiMessage$ ["FR", "Axes"] 			= "Axes"
+pai.uiMessage$ ["FR", "Left"] 			= "Gauche"
+pai.uiMessage$ ["FR", "Right"] 			= "Droite"
+pai.uiMessage$ ["FR", "Top"] 			= "Supérieur"
+pai.uiMessage$ ["FR", "Bottom"] 		= "Inférieur"
+pai.uiMessage$ ["FR", "Axes"] 			= "Axes"
 
 # Chinese
-uiMessage$ ["ZH", "PauseRecord"] 	= "录制连续语音"
-uiMessage$ ["ZH", "Record1"] 		= "录制##连续语音#"
-uiMessage$ ["ZH", "Record2"] 		= "请准备好开始"
-uiMessage$ ["ZH", "Record3"] 		= "选择你想要分析的语音"
-uiMessage$ ["ZH", "Open1"] 			= "打开包含语音的录音文件"
-uiMessage$ ["ZH", "Open2"] 			= "选择你想要分析的语音片段"
-uiMessage$ ["ZH", "Corneri"] 		= "必"
-uiMessage$ ["ZH", "Corneru"] 		= "不"
-uiMessage$ ["ZH", "Cornera"] 		= "巴"
-uiMessage$ ["ZH", "SlopeTitle"] 	= "斜率"
-uiMessage$ ["ZH", "AreaTitle"] 		= "表面积"
-uiMessage$ ["ZH", "Area1"] 			= "1"
-uiMessage$ ["ZH", "Area2"] 			= "2"
-uiMessage$ ["ZH", "AreaN"] 			= "N"
-uiMessage$ ["ZH", "Duration"] 		= "时间"
-uiMessage$ ["ZH", "VTL"] 			= "声道"
+pai.uiMessage$ ["ZH", "PauseRecord"] 	= "录制连续语音"
+pai.uiMessage$ ["ZH", "Record1"] 		= "录制##连续语音#"
+pai.uiMessage$ ["ZH", "Record2"] 		= "请准备好开始"
+pai.uiMessage$ ["ZH", "Record3"] 		= "选择你想要分析的语音"
+pai.uiMessage$ ["ZH", "Open1"] 			= "打开包含语音的录音文件"
+pai.uiMessage$ ["ZH", "Open2"] 			= "选择你想要分析的语音片段"
+pai.uiMessage$ ["ZH", "Corneri"] 		= "必"
+pai.uiMessage$ ["ZH", "Corneru"] 		= "不"
+pai.uiMessage$ ["ZH", "Cornera"] 		= "巴"
+pai.uiMessage$ ["ZH", "SlopeTitle"] 	= "斜率"
+pai.uiMessage$ ["ZH", "AreaTitle"] 		= "表面积"
+pai.uiMessage$ ["ZH", "Area1"] 			= "1"
+pai.uiMessage$ ["ZH", "Area2"] 			= "2"
+pai.uiMessage$ ["ZH", "AreaN"] 			= "N"
+pai.uiMessage$ ["ZH", "Duration"] 		= "时间"
+pai.uiMessage$ ["ZH", "VTL"] 			= "声道"
 
 
-uiMessage$ ["ZH", "LogFile"] 		= "将日志写入表格 (""-"" 写入信息窗口)"
-uiMessage$ ["ZH", "CommentContinue"] = "点击 ""继续"" 如果你想分析更多的语音样本"
-uiMessage$ ["ZH", "CommentOpen"] 	= "点击 ""打开录音"" 并选择一个录音"
-uiMessage$ ["ZH", "CommentRecord"] 	= "点击 ""录音"" 并开始讲话"
-uiMessage$ ["ZH", "CommentList"] 	= "录制声音, ""Save to list & Close"", 然后单击 ""继续"""
-uiMessage$ ["ZH", "SavePicture"] 	= "保存图片"
-uiMessage$ ["ZH", "DoContinue"] 	= "你想继续吗"
-uiMessage$ ["ZH", "SelectSound1"] 	= "选择声音并继续"
-uiMessage$ ["ZH", "SelectSound2"] 	= "可以从选择中删除不需要的声音"
-uiMessage$ ["ZH", "SelectSound3"] 	= "选择不需要的部分，然后从 ""Edit"" 菜单选择 ""Cut"""
-uiMessage$ ["ZH", "Stopped"] 		= "Pitch_and_Intensity_ranges 已停止运行"
-uiMessage$ ["ZH", "ErrorSound"] 	= "错误：不是声音"
-uiMessage$ ["ZH", "Nothing to do"] 	= "无法进行"
-uiMessage$ ["ZH", "No readable recording selected "] = "未选择可读取的录音 "
+pai.uiMessage$ ["ZH", "LogFile"] 		= "将日志写入表格 (""-"" 写入信息窗口)"
+pai.uiMessage$ ["ZH", "CommentContinue"] = "点击 ""继续"" 如果你想分析更多的语音样本"
+pai.uiMessage$ ["ZH", "CommentOpen"] 	= "点击 ""打开录音"" 并选择一个录音"
+pai.uiMessage$ ["ZH", "CommentRecord"] 	= "点击 ""录音"" 并开始讲话"
+pai.uiMessage$ ["ZH", "CommentList"] 	= "录制声音, ""Save to list & Close"", 然后单击 ""继续"""
+pai.uiMessage$ ["ZH", "SavePicture"] 	= "保存图片"
+pai.uiMessage$ ["ZH", "DoContinue"] 	= "你想继续吗"
+pai.uiMessage$ ["ZH", "SelectSound1"] 	= "选择声音并继续"
+pai.uiMessage$ ["ZH", "SelectSound2"] 	= "可以从选择中删除不需要的声音"
+pai.uiMessage$ ["ZH", "SelectSound3"] 	= "选择不需要的部分，然后从 ""Edit"" 菜单选择 ""Cut"""
+pai.uiMessage$ ["ZH", "Stopped"] 		= "Pitch_and_Intensity_ranges 已停止运行"
+pai.uiMessage$ ["ZH", "ErrorSound"] 	= "错误：不是声音"
+pai.uiMessage$ ["ZH", "Nothing to do"] 	= "无法进行"
+pai.uiMessage$ ["ZH", "No readable recording selected "] = "未选择可读取的录音 "
 
-uiMessage$ ["ZH", "Interface Language"] = "语言 (Language)"
-uiMessage$ ["ZH", "Speaker is a"]	= "演讲者是"
-uiMessage$ ["ZH", "Male"] 			= "男性 ♂"
-uiMessage$ ["ZH", "Female"] 		= "女性 ♀"
-uiMessage$ ["ZH", "Automatic"] 		= "自动选择"
-uiMessage$ ["ZH", "Experimental"] 	= "试验：选择共振峰值测量方式"
-uiMessage$ ["ZH", "Continue"] 		= "继续"
-uiMessage$ ["ZH", "Done"] 			= "完成"
-uiMessage$ ["ZH", "Stop"] 			= "结束"
-uiMessage$ ["ZH", "Open"] 			= "从文件夹打开"
-uiMessage$ ["ZH", "Record"] 		= "录音"
-uiMessage$ ["ZH", "untitled"] 		= "无标题"
-uiMessage$ ["ZH", "Title"] 			= "标题"
+pai.uiMessage$ ["ZH", "Interface Language"] = "语言 (Language)"
+pai.uiMessage$ ["ZH", "Speaker is a"]	= "演讲者是"
+pai.uiMessage$ ["ZH", "Male"] 			= "男性 ♂"
+pai.uiMessage$ ["ZH", "Female"] 		= "女性 ♀"
+pai.uiMessage$ ["ZH", "Automatic"] 		= "自动选择"
+pai.uiMessage$ ["ZH", "Experimental"] 	= "试验：选择共振峰值测量方式"
+pai.uiMessage$ ["ZH", "Continue"] 		= "继续"
+pai.uiMessage$ ["ZH", "Done"] 			= "完成"
+pai.uiMessage$ ["ZH", "Stop"] 			= "结束"
+pai.uiMessage$ ["ZH", "Open"] 			= "从文件夹打开"
+pai.uiMessage$ ["ZH", "Record"] 		= "录音"
+pai.uiMessage$ ["ZH", "untitled"] 		= "无标题"
+pai.uiMessage$ ["ZH", "Title"] 			= "标题"
 
-uiMessage$ ["ZH", "Left"] 			= "左图轴"
-uiMessage$ ["ZH", "Right"] 			= "右图轴"
-uiMessage$ ["ZH", "Top"] 			= "上图轴"
-uiMessage$ ["ZH", "Bottom"] 		= "下图轴"
-uiMessage$ ["ZH", "Axes"] 			= "绘图轴"
+pai.uiMessage$ ["ZH", "Left"] 			= "左图轴"
+pai.uiMessage$ ["ZH", "Right"] 			= "右图轴"
+pai.uiMessage$ ["ZH", "Top"] 			= "上图轴"
+pai.uiMessage$ ["ZH", "Bottom"] 		= "下图轴"
+pai.uiMessage$ ["ZH", "Axes"] 			= "绘图轴"
 
 # Spanish
-uiMessage$ ["ES", "PauseRecord"]	= "Grabar un discurso continuo"
-uiMessage$ ["ES", "Record1"]		= "Guardar ##discurso continuo#"
-uiMessage$ ["ES", "Record2"]		= "Por favor, prepárate para comenzar"
-uiMessage$ ["ES", "Record3"]		= "Seleccione el discurso que quiere analizar"
-uiMessage$ ["ES", "Open1"]			= "Abre la grabación que contiene el discurso"
-uiMessage$ ["ES", "Open2"]			= "Seleccione el discurso que quiere analizar"
-uiMessage$ ["ES", "Corneri"]		= "s##i#"
-uiMessage$ ["ES", "Corneru"]		= "##u#so"
-uiMessage$ ["ES", "Cornera"]		= "h##a#"
-uiMessage$ ["ES", "SlopeTitle"]		= "Pendiente"
-uiMessage$ ["ES", "AreaTitle"]		= "Superficie"
-uiMessage$ ["ES", "Area1"]			= "1"
-uiMessage$ ["ES", "Area2"]			= "2"
-uiMessage$ ["ES", "AreaN"]			= "N"
-uiMessage$ ["ES", "Duration"] 		= "duraci\o'n"
-uiMessage$ ["ES", "VTL"] 			= "Tracto vocal"
+pai.uiMessage$ ["ES", "PauseRecord"]	= "Grabar un discurso continuo"
+pai.uiMessage$ ["ES", "Record1"]		= "Guardar ##discurso continuo#"
+pai.uiMessage$ ["ES", "Record2"]		= "Por favor, prepárate para comenzar"
+pai.uiMessage$ ["ES", "Record3"]		= "Seleccione el discurso que quiere analizar"
+pai.uiMessage$ ["ES", "Open1"]			= "Abre la grabación que contiene el discurso"
+pai.uiMessage$ ["ES", "Open2"]			= "Seleccione el discurso que quiere analizar"
+pai.uiMessage$ ["ES", "Corneri"]		= "s##i#"
+pai.uiMessage$ ["ES", "Corneru"]		= "##u#so"
+pai.uiMessage$ ["ES", "Cornera"]		= "h##a#"
+pai.uiMessage$ ["ES", "SlopeTitle"]		= "Pendiente"
+pai.uiMessage$ ["ES", "AreaTitle"]		= "Superficie"
+pai.uiMessage$ ["ES", "Area1"]			= "1"
+pai.uiMessage$ ["ES", "Area2"]			= "2"
+pai.uiMessage$ ["ES", "AreaN"]			= "N"
+pai.uiMessage$ ["ES", "Duration"] 		= "duraci\o'n"
+pai.uiMessage$ ["ES", "VTL"] 			= "Tracto vocal"
                                       
-uiMessage$ ["ES", "LogFile"]		= "Escribir un archivo de registro en una tabla (""-"" escribir en la ventana de información)"
-uiMessage$ ["ES", "CommentContinue"]= "Haga clic en ""Continúa"" si desea analizar más muestras de voz"
-uiMessage$ ["ES", "CommentOpen"]	= "Haga clic en ""Abrir"" y seleccione un registro"
-uiMessage$ ["ES", "CommentRecord"]	= "Haz clic en ""Grabar"" y comienza a hablar"
-uiMessage$ ["ES", "CommentList"]	= "Grabar sonido, ""Save to list & Close"", luego haga clic en ""Continúa"""
-uiMessage$ ["ES", "SavePicture"]	= "Guardar imagen"
-uiMessage$ ["ES", "DoContinue"]		= "¿Quieres continuar?"
-uiMessage$ ["ES", "SelectSound1"]	= "Selecciona el sonido y continúa"
-uiMessage$ ["ES", "SelectSound2"]	= "Es posible eliminar sonidos no deseados de la selección"
-uiMessage$ ["ES", "SelectSound3"]	= "Seleccione la parte no deseada, luego elija ""Cut"" desde el menú ""Edit"""
-uiMessage$ ["ES", "Stopped"]		= "Pitch_and_Intensity_ranges se ha detenido"
-uiMessage$ ["ES", "ErrorSound"]		= "Error: no hay sonido"
-uiMessage$ ["ES", "Nothing to do"] 	= "Nada que hacer"
-uiMessage$ ["ES", "No readable recording selected "] = "No se ha seleccionado ningún registro utilizable "
+pai.uiMessage$ ["ES", "LogFile"]		= "Escribir un archivo de registro en una tabla (""-"" escribir en la ventana de información)"
+pai.uiMessage$ ["ES", "CommentContinue"]= "Haga clic en ""Continúa"" si desea analizar más muestras de voz"
+pai.uiMessage$ ["ES", "CommentOpen"]	= "Haga clic en ""Abrir"" y seleccione un registro"
+pai.uiMessage$ ["ES", "CommentRecord"]	= "Haz clic en ""Grabar"" y comienza a hablar"
+pai.uiMessage$ ["ES", "CommentList"]	= "Grabar sonido, ""Save to list & Close"", luego haga clic en ""Continúa"""
+pai.uiMessage$ ["ES", "SavePicture"]	= "Guardar imagen"
+pai.uiMessage$ ["ES", "DoContinue"]		= "¿Quieres continuar?"
+pai.uiMessage$ ["ES", "SelectSound1"]	= "Selecciona el sonido y continúa"
+pai.uiMessage$ ["ES", "SelectSound2"]	= "Es posible eliminar sonidos no deseados de la selección"
+pai.uiMessage$ ["ES", "SelectSound3"]	= "Seleccione la parte no deseada, luego elija ""Cut"" desde el menú ""Edit"""
+pai.uiMessage$ ["ES", "Stopped"]		= "Pitch_and_Intensity_ranges se ha detenido"
+pai.uiMessage$ ["ES", "ErrorSound"]		= "Error: no hay sonido"
+pai.uiMessage$ ["ES", "Nothing to do"] 	= "Nada que hacer"
+pai.uiMessage$ ["ES", "No readable recording selected "] = "No se ha seleccionado ningún registro utilizable "
 
-uiMessage$ ["ES", "Interface Language"] = "Idioma (Language)"
-uiMessage$ ["ES", "Speaker is a"]	= "El hablante es un(a)"
-uiMessage$ ["ES", "Male"] 			= "Hombre ♂"
-uiMessage$ ["ES", "Female"] 		= "Mujer ♀"
-uiMessage$ ["ES", "Automatic"] 		= "Autoselección"
-uiMessage$ ["ES", "Experimental"] 	= "Experimental: seleccione el método de seguimiento de formantes"
-uiMessage$ ["ES", "Continue"]		= "Continúa"
-uiMessage$ ["ES", "Done"]			= "Terminado"
-uiMessage$ ["ES", "Stop"]			= "Detener"
-uiMessage$ ["ES", "Open"]			= "Abrir"
-uiMessage$ ["ES", "Record"]			= "Grabar"
-uiMessage$ ["ES", "untitled"] 		= "no tiene título"
-uiMessage$ ["ES", "Title"] 			= "Título"
+pai.uiMessage$ ["ES", "Interface Language"] = "Idioma (Language)"
+pai.uiMessage$ ["ES", "Speaker is a"]	= "El hablante es un(a)"
+pai.uiMessage$ ["ES", "Male"] 			= "Hombre ♂"
+pai.uiMessage$ ["ES", "Female"] 		= "Mujer ♀"
+pai.uiMessage$ ["ES", "Automatic"] 		= "Autoselección"
+pai.uiMessage$ ["ES", "Experimental"] 	= "Experimental: seleccione el método de seguimiento de formantes"
+pai.uiMessage$ ["ES", "Continue"]		= "Continúa"
+pai.uiMessage$ ["ES", "Done"]			= "Terminado"
+pai.uiMessage$ ["ES", "Stop"]			= "Detener"
+pai.uiMessage$ ["ES", "Open"]			= "Abrir"
+pai.uiMessage$ ["ES", "Record"]			= "Grabar"
+pai.uiMessage$ ["ES", "untitled"] 		= "no tiene título"
+pai.uiMessage$ ["ES", "Title"] 			= "Título"
 
-uiMessage$ ["ES", "Left"] 			= "Izquierdo"
-uiMessage$ ["ES", "Right"] 			= "Derecho"
-uiMessage$ ["ES", "Top"] 			= "Superior"
-uiMessage$ ["ES", "Bottom"] 		= "Inferior"
-uiMessage$ ["ES", "Axes"] 			= "Ajes"
+pai.uiMessage$ ["ES", "Left"] 			= "Izquierdo"
+pai.uiMessage$ ["ES", "Right"] 			= "Derecho"
+pai.uiMessage$ ["ES", "Top"] 			= "Superior"
+pai.uiMessage$ ["ES", "Bottom"] 		= "Inferior"
+pai.uiMessage$ ["ES", "Axes"] 			= "Ajes"
 
 # Portugese
-uiMessage$ ["PT", "PauseRecord"]	= "Gravar um discurso contínuo"
-uiMessage$ ["PT", "Record1"]		= "Salvar ##discurso contínua#"
-uiMessage$ ["PT", "Record2"]		= "Por favor, prepare-se para começar"
-uiMessage$ ["PT", "Record3"]		= "Selecione o discurso que deseja analisar"
-uiMessage$ ["PT", "Open1"]			= "Abra a gravação que contém o discurso"
-uiMessage$ ["PT", "Open2"]			= "Selecione o discurso que deseja analisar"
-uiMessage$ ["PT", "Corneri"]		= "s##i#"
-uiMessage$ ["PT", "Corneru"]		= "r##u#a"
-uiMessage$ ["PT", "Cornera"]		= "d##á#"
-uiMessage$ ["PT", "SlopeTitle"]		= "Inclina\c,\a~o"
-uiMessage$ ["PT", "AreaTitle"]		= "Superf\i'cie"
-uiMessage$ ["PT", "Area1"]			= "1"
-uiMessage$ ["PT", "Area2"]			= "2"
-uiMessage$ ["PT", "AreaN"]			= "N"
-uiMessage$ ["PT", "Duration"] 		= "Duração"
-uiMessage$ ["PT", "VTL"] 			= "Trato vocal"
+pai.uiMessage$ ["PT", "PauseRecord"]	= "Gravar um discurso contínuo"
+pai.uiMessage$ ["PT", "Record1"]		= "Salvar ##discurso contínua#"
+pai.uiMessage$ ["PT", "Record2"]		= "Por favor, prepare-se para começar"
+pai.uiMessage$ ["PT", "Record3"]		= "Selecione o discurso que deseja analisar"
+pai.uiMessage$ ["PT", "Open1"]			= "Abra a gravação que contém o discurso"
+pai.uiMessage$ ["PT", "Open2"]			= "Selecione o discurso que deseja analisar"
+pai.uiMessage$ ["PT", "Corneri"]		= "s##i#"
+pai.uiMessage$ ["PT", "Corneru"]		= "r##u#a"
+pai.uiMessage$ ["PT", "Cornera"]		= "d##á#"
+pai.uiMessage$ ["PT", "SlopeTitle"]		= "Inclina\c,\a~o"
+pai.uiMessage$ ["PT", "AreaTitle"]		= "Superf\i'cie"
+pai.uiMessage$ ["PT", "Area1"]			= "1"
+pai.uiMessage$ ["PT", "Area2"]			= "2"
+pai.uiMessage$ ["PT", "AreaN"]			= "N"
+pai.uiMessage$ ["PT", "Duration"] 		= "Duração"
+pai.uiMessage$ ["PT", "VTL"] 			= "Trato vocal"
                                                                             
-uiMessage$ ["PT", "LogFile"]		= "Escreva um arquivo de registro em uma tabela (""-"" escreva na janela de informações)"
-uiMessage$ ["PT", "CommentContinue"]= "Clique em ""Continuar"" se quiser analisar mais amostras de voz"
-uiMessage$ ["PT", "CommentOpen"]	= "Clique em ""Abrir"" e selecione um registro"
-uiMessage$ ["PT", "CommentRecord"]	= "Clique ""Gravar"" e comece a falar "
-uiMessage$ ["PT", "CommentList"]	= "Gravar som, ""Save to list & Close"", depois clique em ""Continuar"""
-uiMessage$ ["PT", "SavePicture"]	= "Salvar imagem"
-uiMessage$ ["PT", "DoContinue"]		= "Você quer continuar?"
-uiMessage$ ["PT", "SelectSound1"]	= "Selecione o som e continue"
-uiMessage$ ["PT", "SelectSound2"]	= "É possível remover sons indesejados da seleção"
-uiMessage$ ["PT", "SelectSound3"]	= "Selecione a parte indesejada, então escolha ""Cut"" no menu ""Edit"""
-uiMessage$ ["PT", "Stopped"]		= "Pitch_and_Intensity_ranges parou"
-uiMessage$ ["PT", "ErrorSound"]		= "Erro: não há som"
-uiMessage$ ["PT", "Nothing to do"] 	= "Nada para fazer"
-uiMessage$ ["PT", "No readable recording selected "] = "Nenhum registro utilizável foi selecionado"
+pai.uiMessage$ ["PT", "LogFile"]		= "Escreva um arquivo de registro em uma tabela (""-"" escreva na janela de informações)"
+pai.uiMessage$ ["PT", "CommentContinue"]= "Clique em ""Continuar"" se quiser analisar mais amostras de voz"
+pai.uiMessage$ ["PT", "CommentOpen"]	= "Clique em ""Abrir"" e selecione um registro"
+pai.uiMessage$ ["PT", "CommentRecord"]	= "Clique ""Gravar"" e comece a falar "
+pai.uiMessage$ ["PT", "CommentList"]	= "Gravar som, ""Save to list & Close"", depois clique em ""Continuar"""
+pai.uiMessage$ ["PT", "SavePicture"]	= "Salvar imagem"
+pai.uiMessage$ ["PT", "DoContinue"]		= "Você quer continuar?"
+pai.uiMessage$ ["PT", "SelectSound1"]	= "Selecione o som e continue"
+pai.uiMessage$ ["PT", "SelectSound2"]	= "É possível remover sons indesejados da seleção"
+pai.uiMessage$ ["PT", "SelectSound3"]	= "Selecione a parte indesejada, então escolha ""Cut"" no menu ""Edit"""
+pai.uiMessage$ ["PT", "Stopped"]		= "Pitch_and_Intensity_ranges parou"
+pai.uiMessage$ ["PT", "ErrorSound"]		= "Erro: não há som"
+pai.uiMessage$ ["PT", "Nothing to do"] 	= "Nada para fazer"
+pai.uiMessage$ ["PT", "No readable recording selected "] = "Nenhum registro utilizável foi selecionado"
 
-uiMessage$ ["PT", "Interface Language"] = "Idioma (Language)"
-uiMessage$ ["PT", "Speaker is a"]	= "O falante é um(a)"
-uiMessage$ ["PT", "Male"] 			= "Homem ♂"
-uiMessage$ ["PT", "Female"] 		= "Mulher ♀"
-uiMessage$ ["PT", "Automatic"] 		= "Auto-seleção"
-uiMessage$ ["PT", "Experimental"] 	= "Experimental: Selecione o método de rastreamento formant"
-uiMessage$ ["PT", "Continue"]		= "Continuar"
-uiMessage$ ["PT", "Done"]			= "Terminado"
-uiMessage$ ["PT", "Stop"]			= "Pare"
-uiMessage$ ["PT", "Open"]			= "Abrir"
-uiMessage$ ["PT", "Record"]			= "Gravar"
-uiMessage$ ["PT", "untitled"] 		= "sem título"
-uiMessage$ ["PT", "Title"] 			= "Título"
+pai.uiMessage$ ["PT", "Interface Language"] = "Idioma (Language)"
+pai.uiMessage$ ["PT", "Speaker is a"]	= "O falante é um(a)"
+pai.uiMessage$ ["PT", "Male"] 			= "Homem ♂"
+pai.uiMessage$ ["PT", "Female"] 		= "Mulher ♀"
+pai.uiMessage$ ["PT", "Automatic"] 		= "Auto-seleção"
+pai.uiMessage$ ["PT", "Experimental"] 	= "Experimental: Selecione o método de rastreamento formant"
+pai.uiMessage$ ["PT", "Continue"]		= "Continuar"
+pai.uiMessage$ ["PT", "Done"]			= "Terminado"
+pai.uiMessage$ ["PT", "Stop"]			= "Pare"
+pai.uiMessage$ ["PT", "Open"]			= "Abrir"
+pai.uiMessage$ ["PT", "Record"]			= "Gravar"
+pai.uiMessage$ ["PT", "untitled"] 		= "sem título"
+pai.uiMessage$ ["PT", "Title"] 			= "Título"
 
-uiMessage$ ["PT", "Left"] 			= "Esquerdo"
-uiMessage$ ["PT", "Right"] 			= "Direito"
-uiMessage$ ["PT", "Top"] 			= "Superior"
-uiMessage$ ["PT", "Bottom"] 		= "Inferior"
-uiMessage$ ["PT", "Axes"] 			= "Eixos"
+pai.uiMessage$ ["PT", "Left"] 			= "Esquerdo"
+pai.uiMessage$ ["PT", "Right"] 			= "Direito"
+pai.uiMessage$ ["PT", "Top"] 			= "Superior"
+pai.uiMessage$ ["PT", "Bottom"] 		= "Inferior"
+pai.uiMessage$ ["PT", "Axes"] 			= "Eixos"
 
 # Italian
-uiMessage$ ["IT", "PauseRecord"]	= "Registra un discorso continuo"
-uiMessage$ ["IT", "Record1"]		= "Salva ##discorso continuo#"
-uiMessage$ ["IT", "Record2"]		= "Per favore, preparati a iniziare"
-uiMessage$ ["IT", "Record3"]		= "Seleziona il discorso che vuoi analizzare"
-uiMessage$ ["IT", "Open1"]			= "Apri la registrazione che contiene il discorso"
-uiMessage$ ["IT", "Open2"]			= "Seleziona il discorso che vuoi analizzare"
-uiMessage$ ["IT", "Corneri"]		= "s##ì#"
-uiMessage$ ["IT", "Corneru"]		= "##u#si"
-uiMessage$ ["IT", "Cornera"]		= "sar##à#"
-uiMessage$ ["IT", "SlopeTitle"]		= "Pendenza"
-uiMessage$ ["IT", "AreaTitle"]		= "Superficie"
-uiMessage$ ["IT", "Area1"]			= "1"
-uiMessage$ ["IT", "Area2"]			= "2"
-uiMessage$ ["IT", "AreaN"]			= "N"
-uiMessage$ ["IT", "Duration"] 		= "Durata"
-uiMessage$ ["IT", "VTL"] 			= "Tratto vocale"
+pai.uiMessage$ ["IT", "PauseRecord"]	= "Registra un discorso continuo"
+pai.uiMessage$ ["IT", "Record1"]		= "Salva ##discorso continuo#"
+pai.uiMessage$ ["IT", "Record2"]		= "Per favore, preparati a iniziare"
+pai.uiMessage$ ["IT", "Record3"]		= "Seleziona il discorso che vuoi analizzare"
+pai.uiMessage$ ["IT", "Open1"]			= "Apri la registrazione che contiene il discorso"
+pai.uiMessage$ ["IT", "Open2"]			= "Seleziona il discorso che vuoi analizzare"
+pai.uiMessage$ ["IT", "Corneri"]		= "s##ì#"
+pai.uiMessage$ ["IT", "Corneru"]		= "##u#si"
+pai.uiMessage$ ["IT", "Cornera"]		= "sar##à#"
+pai.uiMessage$ ["IT", "SlopeTitle"]		= "Pendenza"
+pai.uiMessage$ ["IT", "AreaTitle"]		= "Superficie"
+pai.uiMessage$ ["IT", "Area1"]			= "1"
+pai.uiMessage$ ["IT", "Area2"]			= "2"
+pai.uiMessage$ ["IT", "AreaN"]			= "N"
+pai.uiMessage$ ["IT", "Duration"] 		= "Durata"
+pai.uiMessage$ ["IT", "VTL"] 			= "Tratto vocale"
                                                                             
-uiMessage$ ["IT", "LogFile"]		= "Scrivi un file di registrazione in una tabella (""-"" scrivi nella finestra delle informazioni)"
-uiMessage$ ["IT", "CommentContinue"]= "Clicca su ""Continua"" se vuoi analizzare più campioni vocali"
-uiMessage$ ["IT", "CommentOpen"]	= "Fare clic su ""Apri"" e selezionare un record"
-uiMessage$ ["IT", "CommentRecord"]	= "Fai clic su ""Registra"" e inizia a parlare"
-uiMessage$ ["IT", "CommentList"]	= "Registra suono, ""Save to list & Close"", quindi fai clic su ""Continua"""
-uiMessage$ ["IT", "SavePicture"]	= "Salva immagine"
-uiMessage$ ["IT", "DoContinue"]		= "Vuoi continuare?"
-uiMessage$ ["IT", "SelectSound1"]	= "Seleziona il suono e continua"
-uiMessage$ ["IT", "SelectSound2"]	= "È possibile rimuovere i suoni indesiderati dalla selezione"
-uiMessage$ ["IT", "SelectSound3"]	= "Seleziona la parte indesiderata, quindi scegli ""Cut"" dal menu ""Edit"""
-uiMessage$ ["IT", "Stopped"]		= "Pitch_and_Intensity_ranges si è fermato"
-uiMessage$ ["IT", "ErrorSound"]		= "Errore: non c'è suono"
-uiMessage$ ["IT", "Nothing to do"] 	= "Niente da fare"
-uiMessage$ ["IT", "No readable recording selected "] = "Nessun record utilizzabile è stato selezionato "
+pai.uiMessage$ ["IT", "LogFile"]		= "Scrivi un file di registrazione in una tabella (""-"" scrivi nella finestra delle informazioni)"
+pai.uiMessage$ ["IT", "CommentContinue"]= "Clicca su ""Continua"" se vuoi analizzare più campioni vocali"
+pai.uiMessage$ ["IT", "CommentOpen"]	= "Fare clic su ""Apri"" e selezionare un record"
+pai.uiMessage$ ["IT", "CommentRecord"]	= "Fai clic su ""Registra"" e inizia a parlare"
+pai.uiMessage$ ["IT", "CommentList"]	= "Registra suono, ""Save to list & Close"", quindi fai clic su ""Continua"""
+pai.uiMessage$ ["IT", "SavePicture"]	= "Salva immagine"
+pai.uiMessage$ ["IT", "DoContinue"]		= "Vuoi continuare?"
+pai.uiMessage$ ["IT", "SelectSound1"]	= "Seleziona il suono e continua"
+pai.uiMessage$ ["IT", "SelectSound2"]	= "È possibile rimuovere i suoni indesiderati dalla selezione"
+pai.uiMessage$ ["IT", "SelectSound3"]	= "Seleziona la parte indesiderata, quindi scegli ""Cut"" dal menu ""Edit"""
+pai.uiMessage$ ["IT", "Stopped"]		= "Pitch_and_Intensity_ranges si è fermato"
+pai.uiMessage$ ["IT", "ErrorSound"]		= "Errore: non c'è suono"
+pai.uiMessage$ ["IT", "Nothing to do"] 	= "Niente da fare"
+pai.uiMessage$ ["IT", "No readable recording selected "] = "Nessun record utilizzabile è stato selezionato "
 
-uiMessage$ ["IT", "Interface Language"] = "Lingua (Language)"
-uiMessage$ ["IT", "Speaker is a"]	= "L‘oratore è un(a)"
-uiMessage$ ["IT", "Male"] 			= "Uomo ♂"
-uiMessage$ ["IT", "Female"] 		= "Donna ♀"
-uiMessage$ ["IT", "Automatic"] 		= "Auto-selezione"
-uiMessage$ ["IT", "Experimental"] 	= "Sperimentale: seleziona il metodo di tracciamento dei formanti"
-uiMessage$ ["IT", "Continue"]		= "Continua"
-uiMessage$ ["IT", "Done"]			= "Finito"
-uiMessage$ ["IT", "Stop"]			= "Fermare"
-uiMessage$ ["IT", "Open"]			= "Apri"
-uiMessage$ ["IT", "Record"]			= "Registra"
-uiMessage$ ["IT", "untitled"] 		= "senza titolo"
-uiMessage$ ["IT", "Title"] 			= "Titolo"
+pai.uiMessage$ ["IT", "Interface Language"] = "Lingua (Language)"
+pai.uiMessage$ ["IT", "Speaker is a"]	= "L‘oratore è un(a)"
+pai.uiMessage$ ["IT", "Male"] 			= "Uomo ♂"
+pai.uiMessage$ ["IT", "Female"] 		= "Donna ♀"
+pai.uiMessage$ ["IT", "Automatic"] 		= "Auto-selezione"
+pai.uiMessage$ ["IT", "Experimental"] 	= "Sperimentale: seleziona il metodo di tracciamento dei formanti"
+pai.uiMessage$ ["IT", "Continue"]		= "Continua"
+pai.uiMessage$ ["IT", "Done"]			= "Finito"
+pai.uiMessage$ ["IT", "Stop"]			= "Fermare"
+pai.uiMessage$ ["IT", "Open"]			= "Apri"
+pai.uiMessage$ ["IT", "Record"]			= "Registra"
+pai.uiMessage$ ["IT", "untitled"] 		= "senza titolo"
+pai.uiMessage$ ["IT", "Title"] 			= "Titolo"
 
-uiMessage$ ["IT", "Left"] 			= "Sinistro"
-uiMessage$ ["IT", "Right"] 			= "Destro"
-uiMessage$ ["IT", "Top"] 			= "Superiore"
-uiMessage$ ["IT", "Bottom"] 		= "Inferiore"
-uiMessage$ ["IT", "Axes"] 			= "Assi"
+pai.uiMessage$ ["IT", "Left"] 			= "Sinistro"
+pai.uiMessage$ ["IT", "Right"] 			= "Destro"
+pai.uiMessage$ ["IT", "Top"] 			= "Superiore"
+pai.uiMessage$ ["IT", "Bottom"] 		= "Inferiore"
+pai.uiMessage$ ["IT", "Axes"] 			= "Assi"
 
 endproc
 
@@ -1748,10 +1777,7 @@ endproc
 
 # A langue specific version of pauseScript. Can take only a single text argument
 procedure pauseScriptLanguage: .messageID$, .text$
-	beginPause: (uiMessage$ [uiLanguage$, "PauseRecord"])
-		comment: uiMessage$ [uiLanguage$, .messageID$] + .text$
-	.clicked = endPause: (uiMessage$ [uiLanguage$, "Stop"]), (uiMessage$ [uiLanguage$, "Continue"]), 2, 1
-	if .clicked = 1
-		exitScript: (uiMessage$ [uiLanguage$, "Stopped"])
-	endif
+	beginPause: (pai.uiMessage$ [uiLanguage$, "PauseRecord"])
+		comment: pai.uiMessage$ [uiLanguage$, .messageID$] + .text$
+	.clicked = endPause: (pai.uiMessage$ [uiLanguage$, "Continue"]), 1, 1
 endproc
